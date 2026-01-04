@@ -1,0 +1,64 @@
+{
+  "questions": [
+    {
+      "id": 1,
+      "text": "What is the capital of France?",
+      "options": ["Berlin", "Madrid", "Paris", "Rome"],
+      "correct": "Paris"
+    },
+    {
+      "id": 2,
+      "text": "Which planet is known as the Red Planet?",
+      "options": ["Venus", "Mars", "Jupiter", "Saturn"],
+      "correct": "Mars"
+    },
+    {
+      "id": 3,
+      "text": "What is 2 + 2?",
+      "options": ["3", "4", "5", "6"],
+      "correct": "4"
+    },
+    {
+      "id": 4,
+      "text": "Who wrote 'Romeo and Juliet'?",
+      "options": ["Charles Dickens", "William Shakespeare", "Jane Austen", "Mark Twain"],
+      "correct": "William Shakespeare"
+    },
+    {
+      "id": 5,
+      "text": "What is the largest ocean on Earth?",
+      "options": ["Atlantic Ocean", "Indian Ocean", "Arctic Ocean", "Pacific Ocean"],
+      "correct": "Pacific Ocean"
+    },
+    {
+      "id": 6,
+      "text": "In which year did World War II end?",
+      "options": ["1943", "1944", "1945", "1946"],
+      "correct": "1945"
+    },
+    {
+      "id": 7,
+      "text": "What is the chemical symbol for gold?",
+      "options": ["Go", "Gd", "Au", "Ag"],
+      "correct": "Au"
+    },
+    {
+      "id": 8,
+      "text": "Which programming language is primarily used for web development?",
+      "options": ["Python", "JavaScript", "C++", "Java"],
+      "correct": "JavaScript"
+    },
+    {
+      "id": 9,
+      "text": "What is the square root of 64?",
+      "options": ["6", "7", "8", "9"],
+      "correct": "8"
+    },
+    {
+      "id": 10,
+      "text": "Who painted the Mona Lisa?",
+      "options": ["Vincent van Gogh", "Pablo Picasso", "Leonardo da Vinci", "Michelangelo"],
+      "correct": "Leonardo da Vinci"
+    }
+  ]
+}
