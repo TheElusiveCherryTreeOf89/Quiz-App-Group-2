@@ -5,6 +5,11 @@ const NotificationsPage = () => {
   const [activeMenu, setActiveMenu] = useState("notifications");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem("darkMode");
+    return saved ? JSON.parse(saved) : false;
+  });
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const navigate = useNavigate();
 
   // Handle window resize for mobile responsiveness
@@ -19,6 +24,36 @@ const NotificationsPage = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Load dark mode preference
+  useEffect(() => {
+    const saved = localStorage.getItem("darkMode");
+    if (saved) {
+      setDarkMode(JSON.parse(saved));
+    }
+  }, []);
+
+  // Toggle dark mode
+  const toggleDarkMode = () => {
+    setDarkMode(prev => {
+      const newValue = !prev;
+      localStorage.setItem("darkMode", JSON.stringify(newValue));
+      return newValue;
+    });
+  };
+
+  // Theme object
+  const theme = {
+    background: darkMode ? '#1a1a1a' : '#f0f0f0',
+    card: darkMode ? '#2d2d2d' : 'white',
+    text: darkMode ? '#ffffff' : '#1a1a1a',
+    textSecondary: darkMode ? '#a0a0a0' : '#666',
+    border: darkMode ? '#404040' : '#eee',
+    sidebarBg: darkMode ? '#2d2d2d' : 'white',
+    sidebarText: darkMode ? '#ffffff' : '#1a1a1a'
+  };
+
+  const currentUser = JSON.parse(localStorage.getItem("currentUser")) || { name: "Student", email: "student@example.com" };
 
   // Sample notifications with read/unread status
   const [notifications, setNotifications] = useState([
@@ -118,7 +153,7 @@ const NotificationsPage = () => {
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', backgroundColor: '#f0f0f0', position: 'relative' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', backgroundColor: theme.background, position: 'relative', transition: 'background-color 0.3s ease' }}>
       {/* Mobile Overlay */}
       {isMobile && sidebarOpen && (
         <div
@@ -138,10 +173,10 @@ const NotificationsPage = () => {
       {/* Sidebar */}
       <aside style={{
         width: isMobile ? '280px' : '200px',
-        backgroundColor: 'white',
+        backgroundColor: theme.sidebarBg,
         display: 'flex',
         flexDirection: 'column',
-        boxShadow: '2px 0 10px rgba(0,0,0,0.08)',
+        boxShadow: darkMode ? '2px 0 10px rgba(0,0,0,0.3)' : '2px 0 10px rgba(0,0,0,0.08)',
         flexShrink: 0,
         ...(isMobile && {
           position: 'fixed',
@@ -153,9 +188,9 @@ const NotificationsPage = () => {
         })
       }}>
         {/* Menu Header */}
-        <div style={{ padding: '20px', borderBottom: '1px solid #eee' }}>
+        <div style={{ padding: '20px', borderBottom: `1px solid ${theme.border}` }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '20px', fontWeight: '900' }}>Menu</span>
+            <span style={{ fontSize: '20px', fontWeight: '900', fontFamily: 'var(--font-heading)', letterSpacing: '0.5px', color: theme.sidebarText, transition: 'color 0.3s ease' }}>Menu</span>
           </div>
         </div>
 
@@ -174,11 +209,19 @@ const NotificationsPage = () => {
               borderRadius: '12px',
               border: 'none',
               backgroundColor: activeMenu === "dashboard" ? '#FF6B00' : 'transparent',
-              color: activeMenu === "dashboard" ? 'white' : 'black',
+              color: activeMenu === "dashboard" ? 'white' : theme.sidebarText,
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
-              textAlign: 'left'
+              textAlign: 'left',
+              fontFamily: 'var(--font-body)',
+              transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={(e) => {
+              if (activeMenu !== "dashboard") e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5';
+            }}
+            onMouseLeave={(e) => {
+              if (activeMenu !== "dashboard") e.currentTarget.style.backgroundColor = 'transparent';
             }}
           >
             <span style={{ fontSize: '16px' }}>🏠</span>
@@ -198,11 +241,19 @@ const NotificationsPage = () => {
               borderRadius: '12px',
               border: 'none',
               backgroundColor: activeMenu === "profile" ? '#FF6B00' : 'transparent',
-              color: activeMenu === "profile" ? 'white' : 'black',
+              color: activeMenu === "profile" ? 'white' : theme.sidebarText,
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
-              textAlign: 'left'
+              textAlign: 'left',
+              fontFamily: 'var(--font-body)',
+              transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={(e) => {
+              if (activeMenu !== "profile") e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5';
+            }}
+            onMouseLeave={(e) => {
+              if (activeMenu !== "profile") e.currentTarget.style.backgroundColor = 'transparent';
             }}
           >
             <span style={{ fontSize: '16px' }}>👤</span>
@@ -222,11 +273,19 @@ const NotificationsPage = () => {
               borderRadius: '12px',
               border: 'none',
               backgroundColor: activeMenu === "manage-quizzes" ? '#FF6B00' : 'transparent',
-              color: activeMenu === "manage-quizzes" ? 'white' : 'black',
+              color: activeMenu === "manage-quizzes" ? 'white' : theme.sidebarText,
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
-              textAlign: 'left'
+              textAlign: 'left',
+              fontFamily: 'var(--font-body)',
+              transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={(e) => {
+              if (activeMenu !== "manage-quizzes") e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5';
+            }}
+            onMouseLeave={(e) => {
+              if (activeMenu !== "manage-quizzes") e.currentTarget.style.backgroundColor = 'transparent';
             }}
           >
             <span style={{ fontSize: '16px' }}>📝</span>
@@ -246,11 +305,19 @@ const NotificationsPage = () => {
               borderRadius: '12px',
               border: 'none',
               backgroundColor: activeMenu === "results" ? '#FF6B00' : 'transparent',
-              color: activeMenu === "results" ? 'white' : 'black',
+              color: activeMenu === "results" ? 'white' : theme.sidebarText,
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
-              textAlign: 'left'
+              textAlign: 'left',
+              fontFamily: 'var(--font-body)',
+              transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={(e) => {
+              if (activeMenu !== "results") e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5';
+            }}
+            onMouseLeave={(e) => {
+              if (activeMenu !== "results") e.currentTarget.style.backgroundColor = 'transparent';
             }}
           >
             <span style={{ fontSize: '16px' }}>🏆</span>
@@ -270,11 +337,19 @@ const NotificationsPage = () => {
               borderRadius: '12px',
               border: 'none',
               backgroundColor: activeMenu === "notifications" ? '#FF6B00' : 'transparent',
-              color: activeMenu === "notifications" ? 'white' : 'black',
+              color: activeMenu === "notifications" ? 'white' : theme.sidebarText,
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
-              textAlign: 'left'
+              textAlign: 'left',
+              fontFamily: 'var(--font-body)',
+              transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={(e) => {
+              if (activeMenu !== "notifications") e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5';
+            }}
+            onMouseLeave={(e) => {
+              if (activeMenu !== "notifications") e.currentTarget.style.backgroundColor = 'transparent';
             }}
           >
             <span style={{ fontSize: '16px' }}>🔔</span>
@@ -299,7 +374,8 @@ const NotificationsPage = () => {
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
-              textAlign: 'left'
+              textAlign: 'left',
+              fontFamily: 'var(--font-body)'
             }}
           >
             <span style={{ fontSize: '16px' }}>🚪</span>
@@ -313,47 +389,52 @@ const NotificationsPage = () => {
         {/* Header */}
         <header style={{
           backgroundColor: '#FFD700',
-          padding: isMobile ? '16px' : '20px 25px',
+          padding: isMobile ? '12px 16px' : '12px 25px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
           position: 'sticky',
           top: 0,
-          zIndex: 100
+          zIndex: 100,
+          gap: '12px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             {isMobile && (
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
                 style={{
-                  fontSize: '24px',
                   background: 'none',
-                  border: 'none',
+                  border: '2px solid black',
                   cursor: 'pointer',
-                  padding: '4px',
+                  fontSize: '24px',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
                   display: 'flex',
-                  alignItems: 'center'
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  lineHeight: 1
                 }}
               >
                 ☰
               </button>
             )}
-            <div style={{
-              backgroundColor: 'white',
-              padding: '8px 20px',
-              borderRadius: '25px',
-              border: '3px solid #1a1a1a',
-              display: 'inline-flex',
-              alignItems: 'center'
-            }}>
-              <span style={{ fontSize: '16px', fontWeight: '900', color: '#1a1a1a' }}>QuizApp</span>
-            </div>
+            <img 
+              src="/src/assets/1.svg" 
+              alt="QuizApp Logo"
+              style={{
+                height: isMobile ? '48px' : '56px',
+                cursor: 'default',
+                transition: 'transform 0.2s'
+              }}
+            />
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          {/* Right Icons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '12px' : '18px', position: 'relative' }}>
+            {/* Dark Mode Toggle */}
             <button
-              onClick={() => navigate('/student/profile')}
+              onClick={toggleDarkMode}
               style={{
                 background: 'none',
                 border: 'none',
@@ -362,13 +443,154 @@ const NotificationsPage = () => {
                 padding: '4px',
                 display: 'flex',
                 alignItems: 'center',
-                transition: 'transform 0.2s',
+                transition: 'transform 0.2s'
               }}
-              onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+              onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
               onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >
-              👤
+              {darkMode ? '☀️' : '🌙'}
             </button>
+            
+            {/* Profile Icon with Dropdown */}
+            <div style={{ position: 'relative' }}>
+              <button 
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                style={{
+                  width: isMobile ? '36px' : '40px',
+                  height: isMobile ? '36px' : '40px',
+                  borderRadius: '50%',
+                  backgroundColor: 'black',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
+                  fontSize: isMobile ? '16px' : '20px',
+                  transition: 'transform 0.2s'
+                }}
+                onMouseEnter={(e) => e.target.style.transform = 'scale(1.1)'}
+                onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+              >👤</button>
+              
+              {/* Profile Dropdown */}
+              {showProfileMenu && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  marginTop: '8px',
+                  backgroundColor: theme.card,
+                  borderRadius: '12px',
+                  boxShadow: darkMode ? '0 8px 24px rgba(0,0,0,0.5)' : '0 8px 24px rgba(0,0,0,0.15)',
+                  width: '220px',
+                  zIndex: 1000,
+                  animation: 'scaleIn 0.2s ease-out',
+                  overflow: 'hidden',
+                  transition: 'background-color 0.3s ease'
+                }}>
+                  <div style={{
+                    padding: '16px',
+                    borderBottom: `1px solid ${theme.border}`,
+                    backgroundColor: darkMode ? '#3d3d3d' : '#f9f9f9'
+                  }}>
+                    <div style={{ fontSize: '16px', fontWeight: '700', color: theme.text, marginBottom: '4px', fontFamily: 'var(--font-heading)', transition: 'color 0.3s ease' }}>
+                      {currentUser?.name || 'Student'}
+                    </div>
+                    <div style={{ fontSize: '13px', color: theme.textSecondary, fontFamily: 'var(--font-body)', transition: 'color 0.3s ease' }}>
+                      {currentUser?.email}
+                    </div>
+                  </div>
+                  
+                  <button
+                    onClick={() => {
+                      setShowProfileMenu(false);
+                      navigate("/student/profile");
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      border: 'none',
+                      background: 'none',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      color: theme.text,
+                      transition: 'background-color 0.2s',
+                      fontFamily: 'var(--font-body)'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    <span>👤</span>
+                    <span>My Profile</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setShowProfileMenu(false);
+                      navigate("/student/dashboard");
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      border: 'none',
+                      background: 'none',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      color: theme.text,
+                      transition: 'background-color 0.2s',
+                      fontFamily: 'var(--font-body)'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    <span>📊</span>
+                    <span>Dashboard</span>
+                  </button>
+
+                  <div style={{ borderTop: `1px solid ${theme.border}` }}>
+                    <button
+                      onClick={() => {
+                        setShowProfileMenu(false);
+                        handleLogout();
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        border: 'none',
+                        background: 'none',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        color: '#DC2626',
+                        transition: 'background-color 0.2s',
+                        fontFamily: 'var(--font-body)'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                      <span>🚪</span>
+                      <span>Log Out</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 

@@ -213,6 +213,8 @@ export default function InstructorProfilePage() {
 
     return { totalQuizzes, uniqueStudents, totalQuestions, avgScore };
   };
+  
+  const stats = getStats();
 
   // Theme based on dark mode - MUST be defined before any early returns
   const theme = darkMode ? {
@@ -699,10 +701,10 @@ export default function InstructorProfilePage() {
         }}>
           {/* Page Title */}
           <div style={{ marginBottom: isMobile ? '20px' : '32px' }}>
-            <h1 style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: '700', color: theme.text, margin: 0, transition: 'color 0.3s ease' }}>
+            <h1 style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: '700', color: theme.text, margin: 0, transition: 'color 0.3s ease', fontFamily: 'var(--font-heading)' }}>
               Instructor Profile
             </h1>
-            <p style={{ fontSize: '14px', color: theme.textSecondary, marginTop: '8px', transition: 'color 0.3s ease' }}>
+            <p style={{ fontSize: '14px', color: theme.textSecondary, marginTop: '8px', transition: 'color 0.3s ease', fontFamily: 'var(--font-body)' }}>
               Manage your account information and preferences
             </p>
           </div>
@@ -793,10 +795,10 @@ export default function InstructorProfilePage() {
 
               {/* Name and Info */}
               <div style={{ flex: 1 }}>
-                <h2 style={{ fontSize: '28px', fontWeight: '700', color: theme.text, margin: 0, transition: 'color 0.3s ease' }}>
+                <h2 style={{ fontSize: '28px', fontWeight: '700', color: theme.text, margin: 0, transition: 'color 0.3s ease', fontFamily: 'var(--font-heading)' }}>
                   {profileData.name}
                 </h2>
-                <p style={{ fontSize: '16px', color: theme.textSecondary, marginTop: '6px', marginBottom: '8px', transition: 'color 0.3s ease' }}>
+                <p style={{ fontSize: '16px', color: theme.textSecondary, marginTop: '6px', marginBottom: '8px', transition: 'color 0.3s ease', fontFamily: 'var(--font-body)' }}>
                   {profileData.email}
                 </p>
                 <div style={{

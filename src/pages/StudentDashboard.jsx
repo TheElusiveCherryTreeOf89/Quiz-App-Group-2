@@ -12,6 +12,8 @@ export default function StudentDashboard() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [darkMode, setDarkMode] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   const notifications = [
     { id: 1, text: "A quiz has been posted!", time: "Now" },
@@ -48,6 +50,10 @@ export default function StudentDashboard() {
       } else {
         setQuizStatus("available");
       }
+      
+      // Load dark mode preference
+      const savedDarkMode = localStorage.getItem("darkMode") === "true";
+      setDarkMode(savedDarkMode);
     } catch (error) {
       console.error("Error loading dashboard:", error);
       navigate("/login");
@@ -57,6 +63,13 @@ export default function StudentDashboard() {
   const handleLogout = () => {
     localStorage.removeItem("currentUser");
     navigate("/login");
+  };
+  
+  const toggleDarkMode = () => {
+    const newMode = !darkMode;
+    setDarkMode(newMode);
+    localStorage.setItem("darkMode", newMode.toString());
+    showToast(`Dark mode ${newMode ? 'enabled' : 'disabled'}`, "info");
   };
 
   const handleStartQuiz = () => {
@@ -82,17 +95,40 @@ export default function StudentDashboard() {
     const matchesFilter = filterStatus === "all" || quiz.status === filterStatus;
     return matchesSearch && matchesFilter;
   });
+  
+  // Theme based on dark mode
+  const theme = darkMode ? {
+    background: '#1a1a1a',
+    card: '#2d2d2d',
+    text: '#ffffff',
+    textSecondary: '#a0a0a0',
+    border: '#404040',
+    sidebarBg: '#2d2d2d',
+    sidebarText: '#ffffff',
+    welcomeCard: '#2d2d2d',
+    quizCard: '#3d3d3d'
+  } : {
+    background: '#f0f0f0',
+    card: 'white',
+    text: '#1a1a1a',
+    textSecondary: '#666',
+    border: '#eee',
+    sidebarBg: 'white',
+    sidebarText: '#1a1a1a',
+    welcomeCard: '#1a1a1a',
+    quizCard: 'white'
+  };
 
   if (!user) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f5f5' }}>
-        <div style={{ fontSize: '18px', color: '#666' }}>Loading...</div>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: theme.background, transition: 'background-color 0.3s ease' }}>
+        <div style={{ fontSize: '18px', color: theme.textSecondary, transition: 'color 0.3s ease' }}>Loading...</div>
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', backgroundColor: '#f0f0f0', position: 'relative' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', backgroundColor: theme.background, position: 'relative', transition: 'background-color 0.3s ease' }}>
       {/* Mobile Overlay */}
       {isMobile && sidebarOpen && (
         <div 
@@ -113,23 +149,23 @@ export default function StudentDashboard() {
       {/* Left Sidebar */}
       <aside style={{
         width: isMobile ? '280px' : '200px',
-        backgroundColor: 'white',
+        backgroundColor: theme.sidebarBg,
         display: 'flex',
         flexDirection: 'column',
-        boxShadow: '2px 0 10px rgba(0,0,0,0.08)',
+        boxShadow: darkMode ? '2px 0 10px rgba(0,0,0,0.3)' : '2px 0 10px rgba(0,0,0,0.08)',
         flexShrink: 0,
         position: isMobile ? 'fixed' : 'relative',
         left: isMobile ? (sidebarOpen ? 0 : '-280px') : 0,
         top: 0,
         bottom: 0,
         zIndex: 999,
-        transition: 'left 0.3s ease-in-out'
+        transition: 'left 0.3s ease-in-out, background-color 0.3s ease'
       }}>
         {/* Menu Header */}
-        <div style={{ padding: '20px', borderBottom: '1px solid #eee' }}>
+        <div style={{ padding: '20px', borderBottom: `1px solid ${theme.border}` }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '20px', fontWeight: '900' }}>Menu</span>
-            <span style={{ fontSize: '18px', cursor: 'pointer' }}>≡</span>
+            <span style={{ fontSize: '20px', fontWeight: '900', fontFamily: 'var(--font-heading)', letterSpacing: '0.5px', color: theme.text, transition: 'color 0.3s ease' }}>Menu</span>
+            <span style={{ fontSize: '18px', cursor: 'pointer', color: theme.text }}>≡</span>
           </div>
         </div>
 
@@ -148,11 +184,19 @@ export default function StudentDashboard() {
               borderRadius: '12px',
               border: 'none',
               backgroundColor: activeMenu === "dashboard" ? '#FF6B00' : 'transparent',
-              color: activeMenu === "dashboard" ? 'white' : 'black',
+              color: activeMenu === "dashboard" ? 'white' : theme.sidebarText,
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
-              textAlign: 'left'
+              textAlign: 'left',
+              fontFamily: 'var(--font-body)',
+              transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={(e) => {
+              if (activeMenu !== "dashboard") e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5';
+            }}
+            onMouseLeave={(e) => {
+              if (activeMenu !== "dashboard") e.currentTarget.style.backgroundColor = 'transparent';
             }}
           >
             <span style={{ fontSize: '16px' }}>🏠</span>
@@ -176,11 +220,19 @@ export default function StudentDashboard() {
               borderRadius: '12px',
               border: 'none',
               backgroundColor: activeMenu === "profile" ? '#FF6B00' : 'transparent',
-              color: activeMenu === "profile" ? 'white' : 'black',
+              color: activeMenu === "profile" ? 'white' : theme.sidebarText,
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
-              textAlign: 'left'
+              textAlign: 'left',
+              fontFamily: 'var(--font-body)',
+              transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={(e) => {
+              if (activeMenu !== "profile") e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5';
+            }}
+            onMouseLeave={(e) => {
+              if (activeMenu !== "profile") e.currentTarget.style.backgroundColor = 'transparent';
             }}
           >
             <span style={{ fontSize: '16px' }}>👤</span>
@@ -204,11 +256,19 @@ export default function StudentDashboard() {
               borderRadius: '12px',
               border: 'none',
               backgroundColor: activeMenu === "quizzes" ? '#FF6B00' : 'transparent',
-              color: activeMenu === "quizzes" ? 'white' : 'black',
+              color: activeMenu === "quizzes" ? 'white' : theme.sidebarText,
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
-              textAlign: 'left'
+              textAlign: 'left',
+              fontFamily: 'var(--font-body)',
+              transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={(e) => {
+              if (activeMenu !== "quizzes") e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5';
+            }}
+            onMouseLeave={(e) => {
+              if (activeMenu !== "quizzes") e.currentTarget.style.backgroundColor = 'transparent';
             }}
           >
             <span style={{ fontSize: '16px' }}>📝</span>
@@ -232,11 +292,19 @@ export default function StudentDashboard() {
               borderRadius: '12px',
               border: 'none',
               backgroundColor: activeMenu === "results" ? '#FF6B00' : 'transparent',
-              color: activeMenu === "results" ? 'white' : 'black',
+              color: activeMenu === "results" ? 'white' : theme.sidebarText,
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
-              textAlign: 'left'
+              textAlign: 'left',
+              fontFamily: 'var(--font-body)',
+              transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={(e) => {
+              if (activeMenu !== "results") e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5';
+            }}
+            onMouseLeave={(e) => {
+              if (activeMenu !== "results") e.currentTarget.style.backgroundColor = 'transparent';
             }}
           >
             <span style={{ fontSize: '16px' }}>🏆</span>
@@ -260,11 +328,19 @@ export default function StudentDashboard() {
               borderRadius: '12px',
               border: 'none',
               backgroundColor: activeMenu === "notifications" ? '#FF6B00' : 'transparent',
-              color: activeMenu === "notifications" ? 'white' : 'black',
+              color: activeMenu === "notifications" ? 'white' : theme.sidebarText,
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
-              textAlign: 'left'
+              textAlign: 'left',
+              fontFamily: 'var(--font-body)',
+              transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={(e) => {
+              if (activeMenu !== "notifications") e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5';
+            }}
+            onMouseLeave={(e) => {
+              if (activeMenu !== "notifications") e.currentTarget.style.backgroundColor = 'transparent';
             }}
           >
             <span style={{ fontSize: '16px' }}>🔔</span>
@@ -273,7 +349,7 @@ export default function StudentDashboard() {
         </nav>
 
         {/* Log Out */}
-        <div style={{ padding: '15px 12px', borderTop: '1px solid #eee' }}>
+        <div style={{ padding: '15px 12px', borderTop: `1px solid ${theme.border}` }}>
           <button
             onClick={handleLogout}
             style={{
@@ -284,12 +360,17 @@ export default function StudentDashboard() {
               padding: '12px 16px',
               borderRadius: '12px',
               border: 'none',
-              backgroundColor: 'transparent',
+              backgroundColor: '#DC2626',
+              color: 'white',
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
-              textAlign: 'left'
+              textAlign: 'left',
+              fontFamily: 'var(--font-body)',
+              transition: 'all 0.3s ease'
             }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#b91c1c'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#DC2626'}
           >
             <span style={{ fontSize: '16px' }}>🚪</span>
             <span>Log Out</span>
@@ -330,37 +411,177 @@ export default function StudentDashboard() {
           )}
 
           {/* Logo */}
-          <div style={{
-            backgroundColor: 'white',
-            padding: isMobile ? '6px 14px' : '8px 18px',
-            borderRadius: '25px',
-            border: '3px solid black',
-            boxShadow: '0 3px 8px rgba(0,0,0,0.2)'
-          }}>
-            <span style={{ fontWeight: '900', fontSize: isMobile ? '12px' : '14px', fontFamily: 'Arial Black, sans-serif' }}>QuizApp</span>
-          </div>
+          <img 
+            src="/src/assets/1.svg" 
+            alt="QuizApp Logo"
+            style={{
+              height: isMobile ? '48px' : '56px',
+              cursor: 'default',
+              transition: 'transform 0.2s'
+            }}
+          />
 
           {/* Right Icons */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '12px' : '18px' }}>
-            <button 
-              onClick={() => navigate("/student/profile")}
+          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '12px' : '18px', position: 'relative' }}>
+            {/* Dark Mode Toggle */}
+            <button
+              onClick={toggleDarkMode}
               style={{
-                width: isMobile ? '36px' : '40px',
-                height: isMobile ? '36px' : '40px',
-                borderRadius: '50%',
-                backgroundColor: 'black',
+                background: 'none',
                 border: 'none',
                 cursor: 'pointer',
+                fontSize: '24px',
+                padding: '4px',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                color: 'white',
-                fontSize: isMobile ? '16px' : '20px',
                 transition: 'transform 0.2s'
               }}
-              onMouseEnter={(e) => e.target.style.transform = 'scale(1.1)'}
-              onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
-            >👤</button>
+              onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
+              onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {darkMode ? '☀️' : '🌙'}
+            </button>
+            
+            {/* Profile Icon with Dropdown */}
+            <div style={{ position: 'relative' }}>
+              <button 
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                style={{
+                  width: isMobile ? '36px' : '40px',
+                  height: isMobile ? '36px' : '40px',
+                  borderRadius: '50%',
+                  backgroundColor: 'black',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
+                  fontSize: isMobile ? '16px' : '20px',
+                  transition: 'transform 0.2s'
+                }}
+                onMouseEnter={(e) => e.target.style.transform = 'scale(1.1)'}
+                onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+              >👤</button>
+              
+              {/* Profile Dropdown */}
+              {showProfileMenu && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  marginTop: '8px',
+                  backgroundColor: theme.card,
+                  borderRadius: '12px',
+                  boxShadow: darkMode ? '0 8px 24px rgba(0,0,0,0.5)' : '0 8px 24px rgba(0,0,0,0.15)',
+                  width: '220px',
+                  zIndex: 1000,
+                  animation: 'scaleIn 0.2s ease-out',
+                  overflow: 'hidden',
+                  transition: 'background-color 0.3s ease'
+                }}>
+                  <div style={{
+                    padding: '16px',
+                    borderBottom: `1px solid ${theme.border}`,
+                    backgroundColor: darkMode ? '#3d3d3d' : '#f9f9f9'
+                  }}>
+                    <div style={{ fontSize: '16px', fontWeight: '700', color: theme.text, marginBottom: '4px', fontFamily: 'var(--font-heading)', transition: 'color 0.3s ease' }}>
+                      {user?.name || 'Student'}
+                    </div>
+                    <div style={{ fontSize: '13px', color: theme.textSecondary, fontFamily: 'var(--font-body)', transition: 'color 0.3s ease' }}>
+                      {user?.email}
+                    </div>
+                  </div>
+                  
+                  <button
+                    onClick={() => {
+                      setShowProfileMenu(false);
+                      navigate("/student/profile");
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      border: 'none',
+                      background: 'none',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      color: theme.text,
+                      transition: 'background-color 0.2s',
+                      fontFamily: 'var(--font-body)'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    <span>👤</span>
+                    <span>View Profile</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setShowProfileMenu(false);
+                      navigate("/student/manage-quizzes");
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      border: 'none',
+                      background: 'none',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      color: theme.text,
+                      transition: 'background-color 0.2s',
+                      fontFamily: 'var(--font-body)'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    <span>📝</span>
+                    <span>My Quizzes</span>
+                  </button>
+
+                  <div style={{ borderTop: `1px solid ${theme.border}` }}>
+                    <button
+                      onClick={() => {
+                        setShowProfileMenu(false);
+                        handleLogout();
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        border: 'none',
+                        background: 'none',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        color: '#DC2626',
+                        transition: 'background-color 0.2s',
+                        fontFamily: 'var(--font-body)'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                      <span>🚪</span>
+                      <span>Log Out</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
@@ -371,24 +592,28 @@ export default function StudentDashboard() {
             flex: 1, 
             padding: isMobile ? '16px' : '25px', 
             overflowY: 'auto', 
-            backgroundColor: '#f0f0f0',
-            marginLeft: isMobile ? 0 : 0
+            backgroundColor: theme.background,
+            marginLeft: isMobile ? 0 : 0,
+            transition: 'background-color 0.3s ease'
           }}>
             {/* Welcome Card - Black */}
             <div style={{
-              backgroundColor: '#1a1a1a',
+              backgroundColor: theme.welcomeCard,
               borderRadius: isMobile ? '18px' : '25px',
               padding: isMobile ? '24px 20px' : '35px 40px',
-              marginBottom: '25px'
+              marginBottom: '25px',
+              transition: 'background-color 0.3s ease'
             }}>
               <h1 style={{
                 fontSize: isMobile ? '28px' : '42px',
                 fontWeight: '900',
-                color: 'white',
+                color: darkMode ? '#ffffff' : 'white',
                 marginBottom: '8px',
-                fontFamily: 'Arial Black, sans-serif'
-              }}>Welcome, User !</h1>
-              <p style={{ color: '#aaa', fontSize: isMobile ? '14px' : '16px' }}>Ready to challenge yourself? Let's get started!</p>
+                fontFamily: 'var(--font-heading)',
+                letterSpacing: '0.5px',
+                transition: 'color 0.3s ease'
+              }}>Welcome, {user?.name || 'User'} !</h1>
+              <p style={{ color: darkMode ? '#aaa' : '#aaa', fontSize: isMobile ? '14px' : '16px', fontFamily: 'var(--font-body)', transition: 'color 0.3s ease' }}>Ready to challenge yourself? Let's get started!</p>
             </div>
 
             {/* Stats Cards Row */}
@@ -400,11 +625,12 @@ export default function StudentDashboard() {
             }}>
               {/* Available Quizzes - Blue */}
               <div style={{
-                backgroundColor: 'white',
+                backgroundColor: theme.quizCard,
                 borderRadius: '18px',
                 padding: '22px',
                 border: '4px solid #3B82F6',
-                flex: 1
+                flex: 1,
+                transition: 'background-color 0.3s ease'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
                   <div style={{
@@ -417,18 +643,19 @@ export default function StudentDashboard() {
                     justifyContent: 'center',
                     fontSize: '18px'
                   }}>📄</div>
-                  <span style={{ fontSize: '13px', fontWeight: '600', color: '#555' }}>Available Quizzes</span>
+                  <span style={{ fontSize: '13px', fontWeight: '600', color: theme.textSecondary, fontFamily: 'var(--font-body)', transition: 'color 0.3s ease' }}>Available Quizzes</span>
                 </div>
-                <div style={{ fontSize: '52px', fontWeight: '900', color: '#3B82F6' }}>3</div>
+                <div style={{ fontSize: '52px', fontWeight: '900', color: '#3B82F6', fontFamily: 'var(--font-heading)' }}>3</div>
               </div>
 
               {/* Quizzes Taken - Green */}
               <div style={{
-                backgroundColor: 'white',
+                backgroundColor: theme.quizCard,
                 borderRadius: '18px',
                 padding: '22px',
                 border: '4px solid #22C55E',
-                flex: 1
+                flex: 1,
+                transition: 'background-color 0.3s ease'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
                   <div style={{
@@ -441,18 +668,19 @@ export default function StudentDashboard() {
                     justifyContent: 'center',
                     fontSize: '18px'
                   }}>✅</div>
-                  <span style={{ fontSize: '13px', fontWeight: '600', color: '#555' }}>Quizzes Taken</span>
+                  <span style={{ fontSize: '13px', fontWeight: '600', color: theme.textSecondary, fontFamily: 'var(--font-body)', transition: 'color 0.3s ease' }}>Quizzes Taken</span>
                 </div>
-                <div style={{ fontSize: '52px', fontWeight: '900', color: '#22C55E' }}>5</div>
+                <div style={{ fontSize: '52px', fontWeight: '900', color: '#22C55E', fontFamily: 'var(--font-heading)' }}>5</div>
               </div>
 
               {/* Pending Results - Yellow/Orange */}
               <div style={{
-                backgroundColor: 'white',
+                backgroundColor: theme.quizCard,
                 borderRadius: '18px',
                 padding: '22px',
                 border: '4px solid #F59E0B',
-                flex: 1
+                flex: 1,
+                transition: 'background-color 0.3s ease'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
                   <div style={{
@@ -465,20 +693,21 @@ export default function StudentDashboard() {
                     justifyContent: 'center',
                     fontSize: '18px'
                   }}>⏳</div>
-                  <span style={{ fontSize: '13px', fontWeight: '600', color: '#555' }}>Pending Results</span>
+                  <span style={{ fontSize: '13px', fontWeight: '600', color: theme.textSecondary, fontFamily: 'var(--font-body)', transition: 'color 0.3s ease' }}>Pending Results</span>
                 </div>
-                <div style={{ fontSize: '52px', fontWeight: '900', color: '#F59E0B' }}>1</div>
+                <div style={{ fontSize: '52px', fontWeight: '900', color: '#F59E0B', fontFamily: 'var(--font-heading)' }}>1</div>
               </div>
             </div>
 
             {/* Available Quizzes List */}
             <div style={{
-              backgroundColor: 'white',
+              backgroundColor: theme.card,
               borderRadius: '25px',
               padding: '30px',
-              boxShadow: '0 2px 15px rgba(0,0,0,0.05)'
+              boxShadow: darkMode ? '0 2px 15px rgba(0,0,0,0.3)' : '0 2px 15px rgba(0,0,0,0.05)',
+              transition: 'background-color 0.3s ease, box-shadow 0.3s ease'
             }}>
-              <h2 style={{ fontSize: '26px', fontWeight: '900', marginBottom: '25px' }}>Available Quizzes</h2>
+              <h2 style={{ fontSize: '26px', fontWeight: '900', marginBottom: '25px', fontFamily: 'var(--font-heading)', letterSpacing: '0.5px', color: theme.text, transition: 'color 0.3s ease' }}>Available Quizzes</h2>
 
               {/* Search and Filter Row */}
               <div style={{
@@ -497,14 +726,22 @@ export default function StudentDashboard() {
                     flex: 1,
                     padding: '12px 18px',
                     borderRadius: '12px',
-                    border: '2px solid #e5e5e5',
+                    border: `2px solid ${theme.border}`,
                     fontSize: '14px',
-                    fontWeight: '600',
+                    backgroundColor: theme.card,
+                    color: theme.text,
                     outline: 'none',
-                    transition: 'border-color 0.2s'
+                    fontFamily: 'var(--font-body)',
+                    transition: 'all 0.3s ease'
                   }}
-                  onFocus={(e) => e.target.style.borderColor = '#FF6B00'}
-                  onBlur={(e) => e.target.style.borderColor = '#e5e5e5'}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#FF6B00';
+                    e.target.style.boxShadow = '0 0 0 3px rgba(255, 107, 0, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = theme.border;
+                    e.target.style.boxShadow = 'none';
+                  }}
                 />
 
                 {/* Filter Dropdown */}
@@ -514,13 +751,16 @@ export default function StudentDashboard() {
                   style={{
                     padding: '12px 18px',
                     borderRadius: '12px',
-                    border: '2px solid #e5e5e5',
+                    border: `2px solid ${theme.border}`,
                     fontSize: '14px',
                     fontWeight: '600',
-                    backgroundColor: 'white',
+                    backgroundColor: theme.card,
+                    color: theme.text,
                     cursor: 'pointer',
                     outline: 'none',
-                    minWidth: isMobile ? '100%' : '180px'
+                    minWidth: isMobile ? '100%' : '180px',
+                    fontFamily: 'var(--font-body)',
+                    transition: 'all 0.3s ease'
                   }}
                 >
                   <option value="all">All Quizzes</option>
@@ -541,9 +781,10 @@ export default function StudentDashboard() {
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         padding: '18px 0',
-                        borderBottom: index < filteredQuizzes.length - 1 ? '1px solid #eee' : 'none',
+                        borderBottom: index < filteredQuizzes.length - 1 ? `1px solid ${theme.border}` : 'none',
                         flexDirection: isMobile ? 'column' : 'row',
-                        gap: isMobile ? '12px' : '18px'
+                        gap: isMobile ? '12px' : '18px',
+                        transition: 'border-bottom-color 0.3s ease'
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '18px', width: isMobile ? '100%' : 'auto' }}>
@@ -559,9 +800,9 @@ export default function StudentDashboard() {
                           flexShrink: 0
                         }}>{quiz.status === 'completed' ? '✓' : '❓'}</div>
                         <div style={{ flex: 1 }}>
-                          <h3 style={{ fontSize: '17px', fontWeight: '700', marginBottom: '5px' }}>{quiz.title}</h3>
-                          <p style={{ fontSize: '13px', color: '#EF4444', fontWeight: '600', marginBottom: '2px' }}>Due: {quiz.due}</p>
-                          <p style={{ fontSize: '12px', color: '#888' }}>Time Limit: {quiz.timeLimit}</p>
+                          <h3 style={{ fontSize: '17px', fontWeight: '700', marginBottom: '5px', fontFamily: 'var(--font-heading)', letterSpacing: '0.3px', color: theme.text, transition: 'color 0.3s ease' }}>{quiz.title}</h3>
+                          <p style={{ fontSize: '13px', color: '#EF4444', fontWeight: '600', marginBottom: '2px', fontFamily: 'var(--font-body)' }}>Due: {quiz.due}</p>
+                          <p style={{ fontSize: '12px', color: theme.textSecondary, fontFamily: 'var(--font-body)', transition: 'color 0.3s ease' }}>Time Limit: {quiz.timeLimit}</p>
                         </div>
                       </div>
                       <button
@@ -577,7 +818,8 @@ export default function StudentDashboard() {
                           fontSize: '14px',
                           cursor: quiz.status === 'completed' ? 'not-allowed' : 'pointer',
                           whiteSpace: 'nowrap',
-                          width: isMobile ? '100%' : 'auto'
+                          width: isMobile ? '100%' : 'auto',
+                          fontFamily: 'var(--font-body)'
                         }}
                       >{quiz.status === 'completed' ? 'Completed' : 'Attempt Quiz'}</button>
                     </div>
@@ -585,7 +827,7 @@ export default function StudentDashboard() {
                 </>
               ) : (
                 <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-                  <p style={{ fontSize: '16px', color: '#888', fontWeight: '600' }}>
+                  <p style={{ fontSize: '16px', color: theme.textSecondary, fontWeight: '600', fontFamily: 'var(--font-body)', transition: 'color 0.3s ease' }}>
                     No quizzes found{searchTerm && ` for "${searchTerm}"`}
                   </p>
                 </div>
@@ -600,7 +842,8 @@ export default function StudentDashboard() {
                   fontSize: '15px',
                   color: '#333',
                   cursor: 'pointer',
-                  textDecoration: 'underline'
+                  textDecoration: 'underline',
+                  fontFamily: 'var(--font-body)'
                 }}>See All</button>
               </div>
             </div>
@@ -616,7 +859,7 @@ export default function StudentDashboard() {
               borderLeft: '1px solid #e5e5e5',
               flexShrink: 0
             }}>
-              <h3 style={{ fontSize: '24px', fontWeight: '900', marginBottom: '20px' }}>Notification</h3>
+              <h3 style={{ fontSize: '24px', fontWeight: '900', marginBottom: '20px', fontFamily: 'var(--font-heading)', letterSpacing: '0.5px' }}>Notification</h3>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {notifications.map((notif) => (
@@ -629,9 +872,9 @@ export default function StudentDashboard() {
                       cursor: 'pointer'
                     }}
                   >
-                    <p style={{ fontSize: '13px', fontWeight: '500', marginBottom: '8px', lineHeight: '1.5', color: '#333' }}>{notif.text}</p>
+                    <p style={{ fontSize: '13px', fontWeight: '500', marginBottom: '8px', lineHeight: '1.5', color: '#333', fontFamily: 'var(--font-body)' }}>{notif.text}</p>
                     <div style={{ textAlign: 'right' }}>
-                      <span style={{ fontSize: '11px', color: '#888' }}>{notif.time}</span>
+                      <span style={{ fontSize: '11px', color: '#888', fontFamily: 'var(--font-body)' }}>{notif.time}</span>
                     </div>
                   </div>
                 ))}

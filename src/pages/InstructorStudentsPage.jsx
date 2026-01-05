@@ -206,7 +206,7 @@ export default function InstructorStudentsPage() {
         transition: 'left 0.3s ease-in-out, background-color 0.3s ease'
       }}>
         <div style={{ padding: '20px', borderBottom: '1px solid #eee' }}>
-          <span style={{ fontSize: '20px', fontWeight: '900' }}>Menu</span>
+          <span style={{ fontSize: '20px', fontWeight: '900', fontFamily: 'var(--font-heading)' }}>Menu</span>
         </div>
 
         <nav style={{ flex: 1, padding: '15px 12px' }}>
@@ -632,10 +632,10 @@ export default function InstructorStudentsPage() {
         }}>
           {/* Page Title & Search */}
           <div style={{ marginBottom: isMobile ? '20px' : '24px' }}>
-            <h1 style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: '700', color: theme.text, margin: 0, transition: 'color 0.3s ease' }}>
+            <h1 style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: '700', color: theme.text, margin: 0, transition: 'color 0.3s ease', fontFamily: 'var(--font-heading)' }}>
               Manage Students
             </h1>
-            <p style={{ fontSize: '14px', color: theme.textSecondary, marginTop: '8px', marginBottom: '16px', transition: 'color 0.3s ease' }}>
+            <p style={{ fontSize: '14px', color: theme.textSecondary, marginTop: '8px', marginBottom: '16px', transition: 'color 0.3s ease', fontFamily: 'var(--font-body)' }}>
               View and manage your students' progress and performance
             </p>
 

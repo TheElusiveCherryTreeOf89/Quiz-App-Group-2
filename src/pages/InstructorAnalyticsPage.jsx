@@ -281,7 +281,7 @@ export default function InstructorAnalyticsPage() {
         transition: 'left 0.3s ease-in-out, background-color 0.3s ease'
       }}>
         <div style={{ padding: '20px', borderBottom: '1px solid #eee' }}>
-          <span style={{ fontSize: '20px', fontWeight: '900' }}>Menu</span>
+          <span style={{ fontSize: '20px', fontWeight: '900', fontFamily: 'var(--font-heading)' }}>Menu</span>
         </div>
 
         <nav style={{ flex: 1, padding: '15px 12px' }}>
@@ -707,10 +707,10 @@ export default function InstructorAnalyticsPage() {
           {/* Page Title */}
           <div style={{ marginBottom: isMobile ? '20px' : '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
             <div>
-              <h1 style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: '700', color: theme.text, margin: 0, transition: 'color 0.3s ease' }}>
+              <h1 style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: '700', color: theme.text, margin: 0, transition: 'color 0.3s ease', fontFamily: 'var(--font-heading)' }}>
                 Analytics Dashboard
               </h1>
-              <p style={{ fontSize: '14px', color: theme.textSecondary, marginTop: '8px', transition: 'color 0.3s ease' }}>
+              <p style={{ fontSize: '14px', color: theme.textSecondary, marginTop: '8px', transition: 'color 0.3s ease', fontFamily: 'var(--font-body)' }}>
                 Comprehensive insights into quiz performance and student engagement
               </p>
             </div>
@@ -725,7 +725,8 @@ export default function InstructorAnalyticsPage() {
                 cursor: 'pointer',
                 fontSize: '14px',
                 fontWeight: '600',
-                transition: 'all 0.3s ease'
+                transition: 'all 0.3s ease',
+                fontFamily: 'var(--font-body)'
               }}
               onMouseEnter={(e) => {
                 e.target.style.backgroundColor = '#6366F1';

@@ -245,7 +245,7 @@ export default function InstructorDashboard() {
         {/* Menu Header */}
         <div style={{ padding: '20px', borderBottom: `1px solid ${theme.border}`, transition: 'border-color 0.3s ease' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '20px', fontWeight: '900', color: theme.text, transition: 'color 0.3s ease' }}>Menu</span>
+            <span style={{ fontSize: '20px', fontWeight: '900', color: theme.text, transition: 'color 0.3s ease', fontFamily: 'var(--font-heading)' }}>Menu</span>
             <span style={{ fontSize: '18px', cursor: 'pointer', color: theme.text, transition: 'color 0.3s ease' }}>≡</span>
           </div>
         </div>
@@ -273,7 +273,8 @@ export default function InstructorDashboard() {
               fontSize: '14px',
               fontWeight: '600',
               textAlign: 'left',
-              transition: 'all 0.3s ease'
+              transition: 'all 0.3s ease',
+              fontFamily: 'var(--font-body)'
             }}
           >
             <span style={{ fontSize: '16px' }}>📊</span>
@@ -302,7 +303,8 @@ export default function InstructorDashboard() {
               fontSize: '14px',
               fontWeight: '600',
               textAlign: 'left',
-              transition: 'all 0.3s ease'
+              transition: 'all 0.3s ease',
+              fontFamily: 'var(--font-body)'
             }}
           >
             <span style={{ fontSize: '16px' }}>📝</span>
@@ -331,7 +333,8 @@ export default function InstructorDashboard() {
               fontSize: '14px',
               fontWeight: '600',
               textAlign: 'left',
-              transition: 'all 0.3s ease'
+              transition: 'all 0.3s ease',
+              fontFamily: 'var(--font-body)'
             }}
           >
             <span style={{ fontSize: '16px' }}>👥</span>
@@ -360,7 +363,8 @@ export default function InstructorDashboard() {
               fontSize: '14px',
               fontWeight: '600',
               textAlign: 'left',
-              transition: 'all 0.3s ease'
+              transition: 'all 0.3s ease',
+              fontFamily: 'var(--font-body)'
             }}
           >
             <span style={{ fontSize: '16px' }}>👤</span>
@@ -389,7 +393,8 @@ export default function InstructorDashboard() {
               fontSize: '14px',
               fontWeight: '600',
               textAlign: 'left',
-              transition: 'all 0.3s ease'
+              transition: 'all 0.3s ease',
+              fontFamily: 'var(--font-body)'
             }}
           >
             <span style={{ fontSize: '16px' }}>📈</span>
@@ -414,7 +419,8 @@ export default function InstructorDashboard() {
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
-              textAlign: 'left'
+              textAlign: 'left',
+              fontFamily: 'var(--font-body)'
             }}
           >
             <span style={{ fontSize: '16px' }}>🚪</span>
@@ -457,17 +463,17 @@ export default function InstructorDashboard() {
             )}
 
             {/* Logo */}
-            <div style={{
-              backgroundColor: theme.card,
-              padding: '8px 20px',
-              borderRadius: '25px',
-              border: `3px solid ${theme.text}`,
-              display: 'inline-flex',
-              alignItems: 'center',
-              transition: 'all 0.3s ease'
-            }}>
-              <span style={{ fontSize: '16px', fontWeight: '900', color: theme.text, transition: 'color 0.3s ease' }}>QuizApp</span>
-            </div>
+            <img 
+              src="/src/assets/1.svg" 
+              alt="QuizApp Logo" 
+              onClick={() => navigate("/")}
+              style={{ 
+                width: '120px', 
+                height: 'auto',
+                cursor: 'pointer',
+                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
+              }} 
+            />
           </div>
 
           {/* Profile Icon */}
@@ -559,7 +565,7 @@ export default function InstructorDashboard() {
                     justifyContent: 'space-between',
                     alignItems: 'center'
                   }}>
-                    <h3 style={{ fontSize: '16px', fontWeight: '700', margin: 0, color: theme.text, transition: 'color 0.3s ease' }}>Notifications</h3>
+                    <h3 style={{ fontSize: '16px', fontWeight: '700', margin: 0, color: theme.text, transition: 'color 0.3s ease', fontFamily: 'var(--font-heading)' }}>Notifications</h3>
                     {notifications.length > 0 && (
                       <button
                         onClick={clearAllNotifications}
@@ -569,7 +575,8 @@ export default function InstructorDashboard() {
                           background: 'none',
                           border: 'none',
                           cursor: 'pointer',
-                          fontWeight: '600'
+                          fontWeight: '600',
+                          fontFamily: 'var(--font-body)'
                         }}
                       >
                         Clear All
@@ -580,7 +587,7 @@ export default function InstructorDashboard() {
                   {notifications.length === 0 ? (
                     <div style={{ padding: '40px 20px', textAlign: 'center', color: '#999' }}>
                       <div style={{ fontSize: '48px', marginBottom: '12px' }}>🔕</div>
-                      <p style={{ margin: 0, fontSize: '14px' }}>No notifications</p>
+                      <p style={{ margin: 0, fontSize: '14px', fontFamily: 'var(--font-body)' }}>No notifications</p>
                     </div>
                   ) : (
                     <div>
@@ -601,13 +608,13 @@ export default function InstructorDashboard() {
                           <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
                             <span style={{ fontSize: '20px' }}>{notification.icon || '📬'}</span>
                             <div style={{ flex: 1 }}>
-                              <p style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: '600', color: theme.text, transition: 'color 0.3s ease' }}>
+                              <p style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: '600', color: theme.text, transition: 'color 0.3s ease', fontFamily: 'var(--font-body)' }}>
                                 {notification.title}
                               </p>
-                              <p style={{ margin: '0 0 4px 0', fontSize: '13px', color: theme.textSecondary, transition: 'color 0.3s ease' }}>
+                              <p style={{ margin: '0 0 4px 0', fontSize: '13px', color: theme.textSecondary, transition: 'color 0.3s ease', fontFamily: 'var(--font-body)' }}>
                                 {notification.message}
                               </p>
-                              <p style={{ margin: 0, fontSize: '11px', color: darkMode ? '#888' : '#999', transition: 'color 0.3s ease' }}>
+                              <p style={{ margin: 0, fontSize: '11px', color: darkMode ? '#888' : '#999', transition: 'color 0.3s ease', fontFamily: 'var(--font-body)' }}>
                                 {new Date(notification.timestamp).toLocaleString()}
                               </p>
                             </div>
@@ -673,10 +680,10 @@ export default function InstructorDashboard() {
                     borderBottom: `1px solid ${theme.border}`,
                     backgroundColor: darkMode ? '#3d3d3d' : '#f9f9f9'
                   }}>
-                    <div style={{ fontSize: '16px', fontWeight: '700', color: theme.text, marginBottom: '4px', transition: 'color 0.3s ease' }}>
+                    <div style={{ fontSize: '16px', fontWeight: '700', color: theme.text, marginBottom: '4px', transition: 'color 0.3s ease', fontFamily: 'var(--font-heading)' }}>
                       {user?.name || 'Instructor'}
                     </div>
-                    <div style={{ fontSize: '13px', color: theme.textSecondary, transition: 'color 0.3s ease' }}>
+                    <div style={{ fontSize: '13px', color: theme.textSecondary, transition: 'color 0.3s ease', fontFamily: 'var(--font-body)' }}>
                       {user?.email}
                     </div>
                   </div>
@@ -698,7 +705,8 @@ export default function InstructorDashboard() {
                       display: 'flex',
                       alignItems: 'center',
                       gap: '12px',
-                      transition: 'background-color 0.2s'
+                      transition: 'background-color 0.2s',
+                      fontFamily: 'var(--font-body)'
                     }}
                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
@@ -724,7 +732,8 @@ export default function InstructorDashboard() {
                       display: 'flex',
                       alignItems: 'center',
                       gap: '12px',
-                      transition: 'background-color 0.2s'
+                      transition: 'background-color 0.2s',
+                      fontFamily: 'var(--font-body)'
                     }}
                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
@@ -752,7 +761,8 @@ export default function InstructorDashboard() {
                         alignItems: 'center',
                         gap: '12px',
                         color: '#DC2626',
-                        transition: 'background-color 0.2s'
+                        transition: 'background-color 0.2s',
+                        fontFamily: 'var(--font-body)'
                       }}
                       onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fef2f2'}
                       onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
@@ -778,11 +788,12 @@ export default function InstructorDashboard() {
                 fontStyle: 'italic',
                 color: theme.text,
                 margin: '0 0 8px 0',
-                transition: 'color 0.3s ease'
+                transition: 'color 0.3s ease',
+                fontFamily: 'var(--font-heading)'
               }}>
                 Instructor Dashboard
               </h1>
-              <p style={{ fontSize: '16px', color: theme.textSecondary, margin: 0, transition: 'color 0.3s ease' }}>
+              <p style={{ fontSize: '16px', color: theme.textSecondary, margin: 0, transition: 'color 0.3s ease', fontFamily: 'var(--font-body)' }}>
                 Manage quiz results and student performance
               </p>
             </div>
@@ -798,7 +809,8 @@ export default function InstructorDashboard() {
                 fontSize: '15px',
                 fontWeight: '700',
                 transition: 'all 0.2s',
-                boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)'
+                boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
+                fontFamily: 'var(--font-body)'
               }}
               onMouseEnter={(e) => {
                 e.target.style.backgroundColor = '#5558dd';
@@ -833,10 +845,10 @@ export default function InstructorDashboard() {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                  <p style={{ fontSize: '14px', color: theme.textSecondary, margin: '0 0 8px 0', fontWeight: '600', transition: 'color 0.3s ease' }}>
+                  <p style={{ fontSize: '14px', color: theme.textSecondary, margin: '0 0 8px 0', fontWeight: '600', transition: 'color 0.3s ease', fontFamily: 'var(--font-body)' }}>
                     Total Submissions
                   </p>
-                  <p style={{ fontSize: '36px', fontWeight: '900', color: theme.text, margin: 0, transition: 'color 0.3s ease' }}>
+                  <p style={{ fontSize: '36px', fontWeight: '900', color: theme.text, margin: 0, transition: 'color 0.3s ease', fontFamily: 'var(--font-heading)' }}>
                     {results.length}
                   </p>
                 </div>
@@ -854,10 +866,10 @@ export default function InstructorDashboard() {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                  <p style={{ fontSize: '14px', color: theme.textSecondary, margin: '0 0 8px 0', fontWeight: '600', transition: 'color 0.3s ease' }}>
+                  <p style={{ fontSize: '14px', color: theme.textSecondary, margin: '0 0 8px 0', fontWeight: '600', transition: 'color 0.3s ease', fontFamily: 'var(--font-body)' }}>
                     Average Score
                   </p>
-                  <p style={{ fontSize: '36px', fontWeight: '900', color: '#6366F1', margin: 0 }}>
+                  <p style={{ fontSize: '36px', fontWeight: '900', color: '#6366F1', margin: 0, fontFamily: 'var(--font-heading)' }}>
                     {stats.avgScore}
                   </p>
                 </div>
@@ -876,10 +888,10 @@ export default function InstructorDashboard() {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                  <p style={{ fontSize: '14px', color: theme.textSecondary, margin: '0 0 8px 0', fontWeight: '600', transition: 'color 0.3s ease' }}>
+                  <p style={{ fontSize: '14px', color: theme.textSecondary, margin: '0 0 8px 0', fontWeight: '600', transition: 'color 0.3s ease', fontFamily: 'var(--font-body)' }}>
                     Pass Rate
                   </p>
-                  <p style={{ fontSize: '36px', fontWeight: '900', color: '#22C55E', margin: 0 }}>
+                  <p style={{ fontSize: '36px', fontWeight: '900', color: '#22C55E', margin: 0, fontFamily: 'var(--font-heading)' }}>
                     {stats.passRate}%
                   </p>
                 </div>
@@ -898,14 +910,15 @@ export default function InstructorDashboard() {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                  <p style={{ fontSize: '14px', color: theme.textSecondary, margin: '0 0 8px 0', fontWeight: '600', transition: 'color 0.3s ease' }}>
+                  <p style={{ fontSize: '14px', color: theme.textSecondary, margin: '0 0 8px 0', fontWeight: '600', transition: 'color 0.3s ease', fontFamily: 'var(--font-body)' }}>
                     Results Status
                   </p>
                   <p style={{
                     fontSize: '24px',
                     fontWeight: '900',
                     color: resultsReleased ? '#22C55E' : '#F59E0B',
-                    margin: 0
+                    margin: 0,
+                    fontFamily: 'var(--font-heading)'
                   }}>
                     {resultsReleased ? 'Released' : 'Pending'}
                   </p>
@@ -934,7 +947,7 @@ export default function InstructorDashboard() {
               flexWrap: 'wrap',
               gap: '16px'
             }}>
-              <h2 style={{ fontSize: '28px', fontWeight: '900', color: theme.text, margin: 0, transition: 'color 0.3s ease' }}>
+              <h2 style={{ fontSize: '28px', fontWeight: '900', color: theme.text, margin: 0, transition: 'color 0.3s ease', fontFamily: 'var(--font-heading)' }}>
                 Student Results
               </h2>
               {!resultsReleased && results.length > 0 && (
@@ -952,7 +965,8 @@ export default function InstructorDashboard() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '8px',
-                    transition: 'all 0.2s'
+                    transition: 'all 0.2s',
+                    fontFamily: 'var(--font-body)'
                   }}
                   onMouseEnter={(e) => e.target.style.backgroundColor = '#4F46E5'}
                   onMouseLeave={(e) => e.target.style.backgroundColor = '#6366F1'}
@@ -967,10 +981,10 @@ export default function InstructorDashboard() {
             {results.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '60px 20px' }}>
                 <div style={{ fontSize: '72px', marginBottom: '16px' }}>📊</div>
-                <p style={{ fontSize: '24px', fontWeight: '700', color: theme.textSecondary, margin: '0 0 8px 0', transition: 'color 0.3s ease' }}>
+                <p style={{ fontSize: '24px', fontWeight: '700', color: theme.textSecondary, margin: '0 0 8px 0', transition: 'color 0.3s ease', fontFamily: 'var(--font-heading)' }}>
                   No submissions yet
                 </p>
-                <p style={{ fontSize: '16px', color: theme.textSecondary, margin: 0, opacity: 0.7, transition: 'color 0.3s ease' }}>
+                <p style={{ fontSize: '16px', color: theme.textSecondary, margin: 0, opacity: 0.7, transition: 'color 0.3s ease', fontFamily: 'var(--font-body)' }}>
                   Student quiz results will appear here once they submit
                 </p>
               </div>

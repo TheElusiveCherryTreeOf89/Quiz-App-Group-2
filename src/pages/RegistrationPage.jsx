@@ -12,6 +12,8 @@ export default function RegistrationPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -107,21 +109,17 @@ export default function RegistrationPage() {
     }}>
       {/* Logo - Top Left */}
       <div style={{ position: 'absolute', top: '32px', left: '32px' }}>
-        <div style={{ 
-          width: '80px', 
-          height: '50px',
-          background: 'white',
-          borderRadius: '50%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontWeight: 'black',
-          fontSize: '14px',
-          border: '3px solid black',
-          boxShadow: '0 4px 6px rgba(0,0,0,0.2)'
-        }}>
-          QuizApp
-        </div>
+        <img 
+          src="/src/assets/1.svg" 
+          alt="QuizApp Logo" 
+          onClick={() => navigate("/")}
+          style={{ 
+            width: '120px', 
+            height: 'auto',
+            filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.2))',
+            cursor: 'pointer'
+          }} 
+        />
       </div>
 
       {/* Main Content */}
@@ -142,15 +140,17 @@ export default function RegistrationPage() {
             textShadow: '-3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 0 0 20px rgba(0,0,0,0.3)',
             marginBottom: '10px',
             letterSpacing: '4px',
-            fontFamily: 'Arial Black, sans-serif'
+            fontFamily: 'var(--font-heading)'
           }}>
             SIGN UP
           </h1>
           <p style={{ 
             fontSize: '16px',
-            fontWeight: 'bold',
+            fontWeight: '600',
             color: 'white',
-            letterSpacing: '1px'
+            letterSpacing: '1px',
+            fontFamily: 'var(--font-body)',
+            textShadow: '2px 2px 4px rgba(0,0,0,0.3)'
           }}>
             REGISTER YOUR ACCOUNT
           </p>
@@ -173,7 +173,8 @@ export default function RegistrationPage() {
               border: '1px solid #FCA5A5',
               color: '#991B1B',
               borderRadius: '8px',
-              fontSize: '14px'
+              fontSize: '14px',
+              fontFamily: 'var(--font-body)'
             }}>
               {error}
             </div>
@@ -187,7 +188,8 @@ export default function RegistrationPage() {
               border: '1px solid #6EE7B7',
               color: '#065F46',
               borderRadius: '8px',
-              fontSize: '14px'
+              fontSize: '14px',
+              fontFamily: 'var(--font-body)'
             }}>
               {success}
             </div>
@@ -201,7 +203,8 @@ export default function RegistrationPage() {
                 fontSize: '16px',
                 fontWeight: 'bold',
                 marginBottom: '8px',
-                color: '#000'
+                color: '#000',
+                fontFamily: 'var(--font-heading)'
               }}>
                 First Name
               </label>
@@ -212,6 +215,7 @@ export default function RegistrationPage() {
                 onChange={handleChange}
                 required
                 disabled={loading}
+                placeholder="Enter your first name"
                 style={{
                   width: '100%',
                   padding: '14px 16px',
@@ -220,7 +224,8 @@ export default function RegistrationPage() {
                   borderRadius: '12px',
                   backgroundColor: '#D1D5DB',
                   outline: 'none',
-                  boxSizing: 'border-box'
+                  boxSizing: 'border-box',
+                  fontFamily: 'var(--font-body)'
                 }}
               />
             </div>
@@ -232,7 +237,8 @@ export default function RegistrationPage() {
                 fontSize: '16px',
                 fontWeight: 'bold',
                 marginBottom: '8px',
-                color: '#000'
+                color: '#000',
+                fontFamily: 'var(--font-heading)'
               }}>
                 Last Name
               </label>
@@ -240,6 +246,7 @@ export default function RegistrationPage() {
                 type="text"
                 name="lastName"
                 disabled={loading}
+                placeholder="Enter your last name"
                 style={{
                   width: '100%',
                   padding: '14px 16px',
@@ -248,7 +255,8 @@ export default function RegistrationPage() {
                   borderRadius: '12px',
                   backgroundColor: '#D1D5DB',
                   outline: 'none',
-                  boxSizing: 'border-box'
+                  boxSizing: 'border-box',
+                  fontFamily: 'var(--font-body)'
                 }}
               />
             </div>
@@ -260,7 +268,8 @@ export default function RegistrationPage() {
                 fontSize: '16px',
                 fontWeight: 'bold',
                 marginBottom: '8px',
-                color: '#000'
+                color: '#000',
+                fontFamily: 'var(--font-heading)'
               }}>
                 Student Number
               </label>
@@ -268,6 +277,7 @@ export default function RegistrationPage() {
                 type="text"
                 name="studentNumber"
                 disabled={loading}
+                placeholder="Enter your student number"
                 style={{
                   width: '100%',
                   padding: '14px 16px',
@@ -276,7 +286,8 @@ export default function RegistrationPage() {
                   borderRadius: '12px',
                   backgroundColor: '#D1D5DB',
                   outline: 'none',
-                  boxSizing: 'border-box'
+                  boxSizing: 'border-box',
+                  fontFamily: 'var(--font-body)'
                 }}
               />
             </div>
@@ -288,7 +299,8 @@ export default function RegistrationPage() {
                 fontSize: '16px',
                 fontWeight: 'bold',
                 marginBottom: '8px',
-                color: '#000'
+                color: '#000',
+                fontFamily: 'var(--font-heading)'
               }}>
                 Program
               </label>
@@ -296,6 +308,7 @@ export default function RegistrationPage() {
                 type="text"
                 name="program"
                 disabled={loading}
+                placeholder="Enter your program"
                 style={{
                   width: '100%',
                   padding: '14px 16px',
@@ -304,7 +317,8 @@ export default function RegistrationPage() {
                   borderRadius: '12px',
                   backgroundColor: '#D1D5DB',
                   outline: 'none',
-                  boxSizing: 'border-box'
+                  boxSizing: 'border-box',
+                  fontFamily: 'var(--font-body)'
                 }}
               />
             </div>
@@ -316,7 +330,8 @@ export default function RegistrationPage() {
                 fontSize: '16px',
                 fontWeight: 'bold',
                 marginBottom: '8px',
-                color: '#000'
+                color: '#000',
+                fontFamily: 'var(--font-heading)'
               }}>
                 Email
               </label>
@@ -327,6 +342,7 @@ export default function RegistrationPage() {
                 onChange={handleChange}
                 required
                 disabled={loading}
+                placeholder="Enter your email"
                 style={{
                   width: '100%',
                   padding: '14px 16px',
@@ -335,7 +351,8 @@ export default function RegistrationPage() {
                   borderRadius: '12px',
                   backgroundColor: '#D1D5DB',
                   outline: 'none',
-                  boxSizing: 'border-box'
+                  boxSizing: 'border-box',
+                  fontFamily: 'var(--font-body)'
                 }}
               />
             </div>
@@ -347,19 +364,21 @@ export default function RegistrationPage() {
                 fontSize: '16px',
                 fontWeight: 'bold',
                 marginBottom: '8px',
-                color: '#000'
+                color: '#000',
+                fontFamily: 'var(--font-heading)'
               }}>
                 Password
               </label>
               <div style={{ position: 'relative' }}>
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
                   required
                   minLength={6}
                   disabled={loading}
+                  placeholder="Enter your password"
                   style={{
                     width: '100%',
                     padding: '14px 16px',
@@ -369,19 +388,25 @@ export default function RegistrationPage() {
                     borderRadius: '12px',
                     backgroundColor: '#D1D5DB',
                     outline: 'none',
-                    boxSizing: 'border-box'
+                    boxSizing: 'border-box',
+                    fontFamily: 'var(--font-body)'
                   }}
                 />
-                <span style={{
-                  position: 'absolute',
-                  right: '16px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  fontSize: '18px',
-                  cursor: 'pointer'
-                }}>
-                  👁️
-                </span>
+                <img 
+                  src="/assets/images/mdi_eye.png" 
+                  alt="Toggle password visibility"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '16px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    width: '22px',
+                    height: '22px',
+                    cursor: 'pointer',
+                    opacity: showPassword ? '1' : '0.6'
+                  }}
+                />
               </div>
             </div>
 
@@ -392,19 +417,21 @@ export default function RegistrationPage() {
                 fontSize: '16px',
                 fontWeight: 'bold',
                 marginBottom: '8px',
-                color: '#000'
+                color: '#000',
+                fontFamily: 'var(--font-heading)'
               }}>
                 Confirm Password
               </label>
               <div style={{ position: 'relative' }}>
                 <input
-                  type="password"
+                  type={showConfirmPassword ? "text" : "password"}
                   name="confirmPassword"
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   required
                   minLength={6}
                   disabled={loading}
+                  placeholder="Confirm your password"
                   style={{
                     width: '100%',
                     padding: '14px 16px',
@@ -414,19 +441,25 @@ export default function RegistrationPage() {
                     borderRadius: '12px',
                     backgroundColor: '#D1D5DB',
                     outline: 'none',
-                    boxSizing: 'border-box'
+                    boxSizing: 'border-box',
+                    fontFamily: 'var(--font-body)'
                   }}
                 />
-                <span style={{
-                  position: 'absolute',
-                  right: '16px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  fontSize: '18px',
-                  cursor: 'pointer'
-                }}>
-                  👁️
-                </span>
+                <img 
+                  src="/assets/images/mdi_eye.png" 
+                  alt="Toggle password visibility"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '16px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    width: '22px',
+                    height: '22px',
+                    cursor: 'pointer',
+                    opacity: showConfirmPassword ? '1' : '0.6'
+                  }}
+                />
               </div>
             </div>
 
@@ -441,7 +474,8 @@ export default function RegistrationPage() {
                 alignItems: 'center',
                 fontSize: '14px',
                 fontWeight: '500',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                fontFamily: 'var(--font-body)'
               }}>
                 <input 
                   type="checkbox"
@@ -472,7 +506,8 @@ export default function RegistrationPage() {
                 cursor: loading ? 'not-allowed' : 'pointer',
                 opacity: loading ? 0.7 : 1,
                 transition: 'opacity 0.2s',
-                marginBottom: '16px'
+                marginBottom: '16px',
+                fontFamily: 'var(--font-heading)'
               }}
               onMouseEnter={(e) => !loading && (e.target.style.opacity = '0.9')}
               onMouseLeave={(e) => !loading && (e.target.style.opacity = '1')}
@@ -481,7 +516,7 @@ export default function RegistrationPage() {
             </button>
 
             {/* Sign In Link */}
-            <div style={{ textAlign: 'center', fontSize: '14px' }}>
+            <div style={{ textAlign: 'center', fontSize: '14px', fontFamily: 'var(--font-body)' }}>
               Already have an account?{' '}
               <button
                 type="button"
@@ -492,7 +527,8 @@ export default function RegistrationPage() {
                   color: '#E64A19',
                   fontWeight: 'bold',
                   cursor: 'pointer',
-                  textDecoration: 'underline'
+                  textDecoration: 'underline',
+                  fontFamily: 'var(--font-body)'
                 }}
               >
                 Sign In

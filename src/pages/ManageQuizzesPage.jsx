@@ -7,6 +7,13 @@ export default function ManageQuizzesPage() {
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState("available");
   const [activeMenu, setActiveMenu] = useState("manage-quizzes");
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem("darkMode");
+    return saved ? JSON.parse(saved) : false;
+  });
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     const currentUser = JSON.parse(localStorage.getItem("currentUser"));
@@ -16,6 +23,49 @@ export default function ManageQuizzesPage() {
     }
     setUser(currentUser);
   }, [navigate]);
+
+  // Load dark mode preference
+  useEffect(() => {
+    const saved = localStorage.getItem("darkMode");
+    if (saved) {
+      setDarkMode(JSON.parse(saved));
+    }
+  }, []);
+
+  // Handle window resize for mobile
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+      if (window.innerWidth >= 768) {
+        setSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Toggle dark mode
+  const toggleDarkMode = () => {
+    setDarkMode(prev => {
+      const newValue = !prev;
+      localStorage.setItem("darkMode", JSON.stringify(newValue));
+      return newValue;
+    });
+  };
+
+  // Theme object
+  const theme = {
+    background: darkMode ? '#1a1a1a' : '#f0f0f0',
+    card: darkMode ? '#2d2d2d' : 'white',
+    text: darkMode ? '#ffffff' : '#1a1a1a',
+    textSecondary: darkMode ? '#a0a0a0' : '#666',
+    border: darkMode ? '#404040' : '#eee',
+    sidebarBg: darkMode ? '#2d2d2d' : 'white',
+    sidebarText: darkMode ? '#ffffff' : '#1a1a1a'
+  };
+
+  const currentUser = JSON.parse(localStorage.getItem("currentUser")) || { name: "Student", email: "student@example.com" };
 
   const handleLogout = () => {
     localStorage.removeItem("currentUser");
@@ -105,21 +155,21 @@ export default function ManageQuizzesPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', backgroundColor: '#f0f0f0' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', backgroundColor: theme.background, position: 'relative', transition: 'background-color 0.3s ease' }}>
       {/* Left Sidebar */}
       <aside style={{
         width: '200px',
-        backgroundColor: 'white',
+        backgroundColor: theme.sidebarBg,
         display: 'flex',
         flexDirection: 'column',
-        boxShadow: '2px 0 10px rgba(0,0,0,0.08)',
+        boxShadow: darkMode ? '2px 0 10px rgba(0,0,0,0.3)' : '2px 0 10px rgba(0,0,0,0.08)',
         flexShrink: 0
       }}>
         {/* Menu Header */}
-        <div style={{ padding: '20px', borderBottom: '1px solid #eee' }}>
+        <div style={{ padding: '20px', borderBottom: `1px solid ${theme.border}` }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '20px', fontWeight: '900' }}>Menu</span>
-            <span style={{ fontSize: '18px', cursor: 'pointer' }}>≡</span>
+            <span style={{ fontSize: '20px', fontWeight: '900', fontFamily: 'var(--font-heading)', letterSpacing: '0.5px', color: theme.sidebarText, transition: 'color 0.3s ease' }}>Menu</span>
+            <span style={{ fontSize: '18px', cursor: 'pointer', color: theme.sidebarText, transition: 'color 0.3s ease' }}>≡</span>
           </div>
         </div>
 
@@ -141,11 +191,19 @@ export default function ManageQuizzesPage() {
               borderRadius: '12px',
               border: 'none',
               backgroundColor: activeMenu === "dashboard" ? '#FF6B00' : 'transparent',
-              color: activeMenu === "dashboard" ? 'white' : 'black',
+              color: activeMenu === "dashboard" ? 'white' : theme.sidebarText,
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
-              textAlign: 'left'
+              textAlign: 'left',
+              fontFamily: 'var(--font-body)',
+              transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={(e) => {
+              if (activeMenu !== "dashboard") e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5';
+            }}
+            onMouseLeave={(e) => {
+              if (activeMenu !== "dashboard") e.currentTarget.style.backgroundColor = 'transparent';
             }}
           >
             <span style={{ fontSize: '16px' }}>🏠</span>
@@ -165,11 +223,19 @@ export default function ManageQuizzesPage() {
               borderRadius: '12px',
               border: 'none',
               backgroundColor: activeMenu === "profile" ? '#FF6B00' : 'transparent',
-              color: activeMenu === "profile" ? 'white' : 'black',
+              color: activeMenu === "profile" ? 'white' : theme.sidebarText,
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
-              textAlign: 'left'
+              textAlign: 'left',
+              fontFamily: 'var(--font-body)',
+              transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={(e) => {
+              if (activeMenu !== "profile") e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5';
+            }}
+            onMouseLeave={(e) => {
+              if (activeMenu !== "profile") e.currentTarget.style.backgroundColor = 'transparent';
             }}
           >
             <span style={{ fontSize: '16px' }}>👤</span>
@@ -189,11 +255,19 @@ export default function ManageQuizzesPage() {
               borderRadius: '12px',
               border: 'none',
               backgroundColor: activeMenu === "manage-quizzes" ? '#FF6B00' : 'transparent',
-              color: activeMenu === "manage-quizzes" ? 'white' : 'black',
+              color: activeMenu === "manage-quizzes" ? 'white' : theme.sidebarText,
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
-              textAlign: 'left'
+              textAlign: 'left',
+              fontFamily: 'var(--font-body)',
+              transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={(e) => {
+              if (activeMenu !== "manage-quizzes") e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5';
+            }}
+            onMouseLeave={(e) => {
+              if (activeMenu !== "manage-quizzes") e.currentTarget.style.backgroundColor = 'transparent';
             }}
           >
             <span style={{ fontSize: '16px' }}>📝</span>
@@ -216,14 +290,22 @@ export default function ManageQuizzesPage() {
               borderRadius: '12px',
               border: 'none',
               backgroundColor: activeMenu === "result" ? '#FF6B00' : 'transparent',
-              color: activeMenu === "result" ? 'white' : 'black',
+              color: activeMenu === "result" ? 'white' : theme.sidebarText,
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
-              textAlign: 'left'
+              textAlign: 'left',
+              fontFamily: 'var(--font-body)',
+              transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={(e) => {
+              if (activeMenu !== "result") e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5';
+            }}
+            onMouseLeave={(e) => {
+              if (activeMenu !== "result") e.currentTarget.style.backgroundColor = 'transparent';
             }}
           >
-            <span style={{ fontSize: '16px' }}>📊</span>
+            <span style={{ fontSize: '16px' }}>🏆</span>
             <span>My Result</span>
           </button>
 
@@ -240,11 +322,19 @@ export default function ManageQuizzesPage() {
               borderRadius: '12px',
               border: 'none',
               backgroundColor: activeMenu === "notification" ? '#FF6B00' : 'transparent',
-              color: activeMenu === "notification" ? 'white' : 'black',
+              color: activeMenu === "notification" ? 'white' : theme.sidebarText,
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
-              textAlign: 'left'
+              textAlign: 'left',
+              fontFamily: 'var(--font-body)',
+              transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={(e) => {
+              if (activeMenu !== "notification") e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5';
+            }}
+            onMouseLeave={(e) => {
+              if (activeMenu !== "notification") e.currentTarget.style.backgroundColor = 'transparent';
             }}
           >
             <span style={{ fontSize: '16px' }}>🔔</span>
@@ -253,7 +343,7 @@ export default function ManageQuizzesPage() {
         </nav>
 
         {/* Logout Button */}
-        <div style={{ padding: '15px 12px', borderTop: '1px solid #eee' }}>
+        <div style={{ padding: '15px 12px', borderTop: `1px solid ${theme.border}` }}>
           <button
             onClick={handleLogout}
             style={{
@@ -264,13 +354,17 @@ export default function ManageQuizzesPage() {
               padding: '12px 16px',
               borderRadius: '12px',
               border: 'none',
-              backgroundColor: 'transparent',
-              color: 'black',
+              backgroundColor: '#DC2626',
+              color: 'white',
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
-              textAlign: 'left'
+              textAlign: 'left',
+              fontFamily: 'var(--font-body)',
+              transition: 'background-color 0.3s ease'
             }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#B91C1C'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#DC2626'}
           >
             <span style={{ fontSize: '16px' }}>🚪</span>
             <span>Log Out</span>
@@ -283,48 +377,185 @@ export default function ManageQuizzesPage() {
         {/* Top Header */}
         <header style={{
           backgroundColor: '#FFD700',
-          padding: '20px 32px',
+          padding: isMobile ? '12px 16px' : '12px 32px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          gap: '12px'
         }}>
           {/* Logo */}
-          <div style={{
-            backgroundColor: 'white',
-            padding: '8px 20px',
-            borderRadius: '25px',
-            border: '3px solid black',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
-            <span style={{ fontSize: '24px', fontWeight: '900', color: 'black' }}>QuizApp</span>
-          </div>
+          <img 
+            src="/src/assets/1.svg" 
+            alt="QuizApp Logo"
+            style={{
+              height: isMobile ? '48px' : '56px',
+              cursor: 'default',
+              transition: 'transform 0.2s'
+            }}
+          />
 
           {/* Right Side Icons */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <button style={{
-              background: 'none',
-              border: 'none',
-              fontSize: '24px',
-              cursor: 'pointer',
-              padding: '8px'
-            }}>🌙</button>
-            <button style={{
-              background: 'none',
-              border: 'none',
-              fontSize: '24px',
-              cursor: 'pointer',
-              padding: '8px'
-            }}>🔔</button>
-            <button style={{
-              background: 'none',
-              border: 'none',
-              fontSize: '24px',
-              cursor: 'pointer',
-              padding: '8px'
-            }}>👤</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '12px' : '18px', position: 'relative' }}>
+            {/* Dark Mode Toggle */}
+            <button
+              onClick={toggleDarkMode}
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: '24px',
+                cursor: 'pointer',
+                padding: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                transition: 'transform 0.2s'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
+              onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {darkMode ? '☀️' : '🌙'}
+            </button>
+
+            {/* Profile Icon with Dropdown */}
+            <div style={{ position: 'relative' }}>
+              <button 
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                style={{
+                  width: isMobile ? '36px' : '40px',
+                  height: isMobile ? '36px' : '40px',
+                  borderRadius: '50%',
+                  backgroundColor: 'black',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
+                  fontSize: isMobile ? '16px' : '20px',
+                  transition: 'transform 0.2s'
+                }}
+                onMouseEnter={(e) => e.target.style.transform = 'scale(1.1)'}
+                onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+              >👤</button>
+              
+              {/* Profile Dropdown */}
+              {showProfileMenu && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  marginTop: '8px',
+                  backgroundColor: theme.card,
+                  borderRadius: '12px',
+                  boxShadow: darkMode ? '0 8px 24px rgba(0,0,0,0.5)' : '0 8px 24px rgba(0,0,0,0.15)',
+                  width: '220px',
+                  zIndex: 1000,
+                  animation: 'scaleIn 0.2s ease-out',
+                  overflow: 'hidden',
+                  transition: 'background-color 0.3s ease'
+                }}>
+                  <div style={{
+                    padding: '16px',
+                    borderBottom: `1px solid ${theme.border}`,
+                    backgroundColor: darkMode ? '#3d3d3d' : '#f9f9f9'
+                  }}>
+                    <div style={{ fontSize: '16px', fontWeight: '700', color: theme.text, marginBottom: '4px', fontFamily: 'var(--font-heading)', transition: 'color 0.3s ease' }}>
+                      {currentUser?.name || 'Student'}
+                    </div>
+                    <div style={{ fontSize: '13px', color: theme.textSecondary, fontFamily: 'var(--font-body)', transition: 'color 0.3s ease' }}>
+                      {currentUser?.email}
+                    </div>
+                  </div>
+                  
+                  <button
+                    onClick={() => {
+                      setShowProfileMenu(false);
+                      navigate("/student/profile");
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      border: 'none',
+                      background: 'none',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      color: theme.text,
+                      transition: 'background-color 0.2s',
+                      fontFamily: 'var(--font-body)'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    <span>👤</span>
+                    <span>My Profile</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setShowProfileMenu(false);
+                      navigate("/student/dashboard");
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      border: 'none',
+                      background: 'none',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      color: theme.text,
+                      transition: 'background-color 0.2s',
+                      fontFamily: 'var(--font-body)'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    <span>📊</span>
+                    <span>Dashboard</span>
+                  </button>
+
+                  <div style={{ borderTop: `1px solid ${theme.border}` }}>
+                    <button
+                      onClick={() => {
+                        setShowProfileMenu(false);
+                        handleLogout();
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        border: 'none',
+                        background: 'none',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        color: '#DC2626',
+                        transition: 'background-color 0.2s',
+                        fontFamily: 'var(--font-body)'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                      <span>🚪</span>
+                      <span>Log Out</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 

@@ -11,6 +11,13 @@ export default function MyResultPage() {
   const [activeTab, setActiveTab] = useState("available");
   const [selectedQuiz, setSelectedQuiz] = useState(null);
   const [showResultModal, setShowResultModal] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem("darkMode");
+    return saved ? JSON.parse(saved) : false;
+  });
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -25,6 +32,49 @@ export default function MyResultPage() {
       navigate("/login");
     }
   }, [navigate]);
+
+  // Load dark mode preference
+  useEffect(() => {
+    const saved = localStorage.getItem("darkMode");
+    if (saved) {
+      setDarkMode(JSON.parse(saved));
+    }
+  }, []);
+
+  // Handle window resize for mobile
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+      if (window.innerWidth >= 768) {
+        setSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Toggle dark mode
+  const toggleDarkMode = () => {
+    setDarkMode(prev => {
+      const newValue = !prev;
+      localStorage.setItem("darkMode", JSON.stringify(newValue));
+      return newValue;
+    });
+  };
+
+  // Theme object
+  const theme = {
+    background: darkMode ? '#1a1a1a' : '#f0f0f0',
+    card: darkMode ? '#2d2d2d' : 'white',
+    text: darkMode ? '#ffffff' : '#1a1a1a',
+    textSecondary: darkMode ? '#a0a0a0' : '#666',
+    border: darkMode ? '#404040' : '#eee',
+    sidebarBg: darkMode ? '#2d2d2d' : 'white',
+    sidebarText: darkMode ? '#ffffff' : '#1a1a1a'
+  };
+
+  const currentUser = JSON.parse(localStorage.getItem("currentUser")) || { name: "Student", email: "student@example.com" };
 
   const handleLogout = () => {
     localStorage.removeItem("currentUser");
@@ -129,21 +179,21 @@ export default function MyResultPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', backgroundColor: '#f0f0f0' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', backgroundColor: theme.background, position: 'relative', transition: 'background-color 0.3s ease' }}>
       {/* Left Sidebar */}
       <aside style={{
         width: '200px',
-        backgroundColor: 'white',
+        backgroundColor: theme.sidebarBg,
         display: 'flex',
         flexDirection: 'column',
-        boxShadow: '2px 0 10px rgba(0,0,0,0.08)',
+        boxShadow: darkMode ? '2px 0 10px rgba(0,0,0,0.3)' : '2px 0 10px rgba(0,0,0,0.08)',
         flexShrink: 0
       }}>
         {/* Menu Header */}
-        <div style={{ padding: '20px', borderBottom: '1px solid #eee' }}>
+        <div style={{ padding: '20px', borderBottom: `1px solid ${theme.border}` }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '20px', fontWeight: '900' }}>Menu</span>
-            <span style={{ fontSize: '18px', cursor: 'pointer' }}>≡</span>
+            <span style={{ fontSize: '20px', fontWeight: '900', fontFamily: 'var(--font-heading)', letterSpacing: '0.5px', color: theme.sidebarText, transition: 'color 0.3s ease' }}>Menu</span>
+            <span style={{ fontSize: '18px', cursor: 'pointer', color: theme.sidebarText, transition: 'color 0.3s ease' }}>≡</span>
           </div>
         </div>
 
@@ -166,7 +216,8 @@ export default function MyResultPage() {
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
-              textAlign: 'left'
+              textAlign: 'left',
+              fontFamily: 'var(--font-body)'
             }}
           >
             <span style={{ fontSize: '16px' }}>🏠</span>
@@ -190,7 +241,8 @@ export default function MyResultPage() {
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
-              textAlign: 'left'
+              textAlign: 'left',
+              fontFamily: 'var(--font-body)'
             }}
           >
             <span style={{ fontSize: '16px' }}>👤</span>
@@ -214,7 +266,8 @@ export default function MyResultPage() {
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
-              textAlign: 'left'
+              textAlign: 'left',
+              fontFamily: 'var(--font-body)'
             }}
           >
             <span style={{ fontSize: '16px' }}>📝</span>
@@ -238,7 +291,8 @@ export default function MyResultPage() {
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
-              textAlign: 'left'
+              textAlign: 'left',
+              fontFamily: 'var(--font-body)'
             }}
           >
             <span style={{ fontSize: '16px' }}>🏆</span>
@@ -262,7 +316,8 @@ export default function MyResultPage() {
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
-              textAlign: 'left'
+              textAlign: 'left',
+              fontFamily: 'var(--font-body)'
             }}
           >
             <span style={{ fontSize: '16px' }}>🔔</span>
@@ -286,7 +341,8 @@ export default function MyResultPage() {
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
-              textAlign: 'left'
+              textAlign: 'left',
+              fontFamily: 'var(--font-body)'
             }}
           >
             <span style={{ fontSize: '16px' }}>🚪</span>

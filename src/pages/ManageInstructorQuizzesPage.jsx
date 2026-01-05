@@ -306,7 +306,7 @@ export default function ManageInstructorQuizzesPage() {
       }}>
         <div style={{ padding: '20px', borderBottom: `1px solid ${theme.border}` }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '20px', fontWeight: '900', color: theme.text }}>Menu</span>
+            <span style={{ fontSize: '20px', fontWeight: '900', color: theme.text, fontFamily: 'var(--font-heading)' }}>Menu</span>
           </div>
         </div>
 
@@ -821,14 +821,16 @@ export default function ManageInstructorQuizzesPage() {
                   fontSize: '32px',
                   fontWeight: '900',
                   color: '#1a1a1a',
-                  margin: 0
+                  margin: 0,
+                  fontFamily: 'var(--font-heading)'
                 }}>
                   Manage Quizzes
                 </h1>
                 <p style={{
                   fontSize: '14px',
                   color: '#666',
-                  marginTop: '8px'
+                  marginTop: '8px',
+                  fontFamily: 'var(--font-body)'
                 }}>
                   {quizzes.length} total quiz{quizzes.length !== 1 ? 'es' : ''} created
                 </p>
@@ -845,7 +847,8 @@ export default function ManageInstructorQuizzesPage() {
                   fontSize: '15px',
                   fontWeight: '700',
                   transition: 'all 0.2s',
-                  boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)'
+                  boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
+                  fontFamily: 'var(--font-body)'
                 }}
                 onMouseEnter={(e) => {
                   e.target.style.backgroundColor = '#5558dd';

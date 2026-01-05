@@ -6,10 +6,10 @@ export default function LoginPage() {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
-    role: "student",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -42,17 +42,12 @@ export default function LoginPage() {
       try {
         const userData = {
           email: formData.email.trim().toLowerCase(),
-          role: formData.role,
+          role: "student",
           name: formData.email.split("@")[0],
         };
         
         localStorage.setItem("currentUser", JSON.stringify(userData));
-
-        if (formData.role === "student") {
-          navigate("/student/dashboard");
-        } else {
-          navigate("/instructor/dashboard");
-        }
+        navigate("/student/dashboard");
       } catch (err) {
         setError("Login failed. Please try again.");
         setLoading(false);
@@ -71,43 +66,41 @@ export default function LoginPage() {
     <div className="min-h-screen relative" style={{ background: 'linear-gradient(180deg, #FF8800 0%, #FFD700 100%)' }}>
       {/* Logo - Top Left */}
       <div className="absolute top-8 left-8">
-        <div style={{ 
-          width: '80px', 
-          height: '50px',
-          background: 'white',
-          borderRadius: '50%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontWeight: 'black',
-          fontSize: '14px',
-          border: '3px solid black',
-          boxShadow: '0 4px 6px rgba(0,0,0,0.2)'
-        }}>
-          QuizApp
-        </div>
+        <img 
+          src="/src/assets/1.svg" 
+          alt="QuizApp Logo" 
+          onClick={() => navigate("/")}
+          style={{ 
+            width: '120px', 
+            height: 'auto',
+            filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.2))',
+            cursor: 'pointer'
+          }} 
+        />
       </div>
 
       {/* Main Content */}
       <div className="min-h-screen flex flex-col items-center justify-center px-4">
         {/* Title Section - Outside the card */}
         <div className="text-center mb-10">
-          <h1 style={{ 
-            fontSize: '80px',
-            fontWeight: '900',
-            color: 'white',
-            textShadow: '-3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 0 0 20px rgba(0,0,0,0.3)',
-            marginBottom: '10px',
-            letterSpacing: '4px',
-            fontFamily: 'Arial Black, sans-serif'
-          }}>
-            LOG IN
-          </h1>
+          <img 
+            src="/assets/images/LOG IN.png" 
+            alt="LOG IN" 
+            style={{ 
+              maxWidth: '500px',
+              width: '100%',
+              height: 'auto',
+              marginBottom: '20px',
+              filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.3))'
+            }} 
+          />
           <p style={{ 
             fontSize: '18px',
-            fontWeight: 'bold',
+            fontWeight: '600',
             color: 'white',
-            letterSpacing: '1px'
+            letterSpacing: '1px',
+            fontFamily: 'var(--font-body)',
+            textShadow: '2px 2px 4px rgba(0,0,0,0.3)'
           }}>
             SIGN IN TO YOUR ACCOUNT
           </p>
@@ -132,7 +125,8 @@ export default function LoginPage() {
               borderRadius: '12px',
               fontSize: '14px',
               fontWeight: '600',
-              textAlign: 'center'
+              textAlign: 'center',
+              fontFamily: 'var(--font-body)'
             }}>
               {error}
             </div>
@@ -145,7 +139,8 @@ export default function LoginPage() {
                 fontSize: '18px',
                 fontWeight: 'bold',
                 marginBottom: '10px',
-                color: '#000'
+                color: '#000',
+                fontFamily: 'var(--font-heading)'
               }}>
                 Username
               </label>
@@ -155,6 +150,7 @@ export default function LoginPage() {
                 value={formData.email}
                 onChange={handleChange}
                 required
+                placeholder="Enter your email"
                 style={{
                   width: '100%',
                   padding: '16px 20px',
@@ -163,7 +159,8 @@ export default function LoginPage() {
                   borderRadius: '15px',
                   backgroundColor: '#D1D5DB',
                   outline: 'none',
-                  boxSizing: 'border-box'
+                  boxSizing: 'border-box',
+                  fontFamily: 'var(--font-body)'
                 }}
               />
             </div>
@@ -175,18 +172,20 @@ export default function LoginPage() {
                 fontSize: '18px',
                 fontWeight: 'bold',
                 marginBottom: '10px',
-                color: '#000'
+                color: '#000',
+                fontFamily: 'var(--font-heading)'
               }}>
                 Password
               </label>
               <div style={{ position: 'relative' }}>
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
                   required
                   minLength={6}
+                  placeholder="Enter your password"
                   style={{
                     width: '100%',
                     padding: '16px 20px',
@@ -196,19 +195,25 @@ export default function LoginPage() {
                     borderRadius: '15px',
                     backgroundColor: '#D1D5DB',
                     outline: 'none',
-                    boxSizing: 'border-box'
+                    boxSizing: 'border-box',
+                    fontFamily: 'var(--font-body)'
                   }}
                 />
-                <span style={{
-                  position: 'absolute',
-                  right: '20px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  fontSize: '20px',
-                  cursor: 'pointer'
-                }}>
-                  👁️
-                </span>
+                <img 
+                  src="/assets/images/mdi_eye.png" 
+                  alt="Toggle password visibility"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '20px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    width: '24px',
+                    height: '24px',
+                    cursor: 'pointer',
+                    opacity: showPassword ? '1' : '0.6'
+                  }}
+                />
               </div>
             </div>
 
@@ -224,7 +229,8 @@ export default function LoginPage() {
                 alignItems: 'center',
                 fontSize: '14px',
                 fontWeight: '500',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                fontFamily: 'var(--font-body)'
               }}>
                 <input 
                   type="checkbox" 
@@ -245,7 +251,8 @@ export default function LoginPage() {
                   fontSize: '14px',
                   fontWeight: 'bold',
                   cursor: 'pointer',
-                  textDecoration: 'underline'
+                  textDecoration: 'underline',
+                  fontFamily: 'var(--font-body)'
                 }}
               >
                 Forgot Password
@@ -268,7 +275,8 @@ export default function LoginPage() {
                 cursor: loading ? 'not-allowed' : 'pointer',
                 opacity: loading ? 0.7 : 1,
                 transition: 'opacity 0.2s',
-                marginBottom: '20px'
+                marginBottom: '20px',
+                fontFamily: 'var(--font-heading)'
               }}
               onMouseEnter={(e) => e.target.style.opacity = '0.9'}
               onMouseLeave={(e) => e.target.style.opacity = '1'}
@@ -277,7 +285,7 @@ export default function LoginPage() {
             </button>
 
             {/* Sign Up Link */}
-            <div style={{ textAlign: 'center', fontSize: '15px' }}>
+            <div style={{ textAlign: 'center', fontSize: '15px', fontFamily: 'var(--font-body)', marginBottom: '16px' }}>
               Don't have an account yet?{' '}
               <button
                 type="button"
@@ -288,10 +296,31 @@ export default function LoginPage() {
                   color: '#E64A19',
                   fontWeight: 'bold',
                   cursor: 'pointer',
-                  textDecoration: 'underline'
+                  textDecoration: 'underline',
+                  fontFamily: 'var(--font-body)'
                 }}
               >
                 Sign Up
+              </button>
+            </div>
+
+            {/* Role Switcher Link */}
+            <div style={{ textAlign: 'center', fontSize: '15px', fontFamily: 'var(--font-body)' }}>
+              Not a student?{' '}
+              <button
+                type="button"
+                onClick={() => navigate("/instructor/login")}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#E64A19',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  fontFamily: 'var(--font-body)'
+                }}
+              >
+                Instructor Login
               </button>
             </div>
           </form>

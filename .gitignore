@@ -33,3 +33,8 @@ _PROJECT_ARCHIVE/
 # Testing
 coverage/
 .nyc_output/
+
+# Documentation (KEEP THESE - they should be tracked)
+# README.md
+# GIT_WORKFLOW_GUIDE.md
+# VIDEO_SCRIPT_GIT_ACTIVITY.md
