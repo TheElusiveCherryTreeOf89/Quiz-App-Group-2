@@ -423,7 +423,7 @@ This project is developed for educational purposes as part of the DCIT 26 course
 For questions, issues, or contributions, please contact the development team:
 
 - **Lead Developer**: Von Zymon Raphael B. Patagnan
-- **Project Repository**: [GitHub Link]
+- **Project Repository**: [\[GitHub Link\]](https://github.com/TheElusiveCherryTreeOf89/Quiz-App-Group-2)
 - **Documentation**: See `docs/` folder for detailed guides
 
 ---
@@ -431,7 +431,7 @@ For questions, issues, or contributions, please contact the development team:
 ## 🎓 Course Information
 
 - **Course**: DCIT 26 - Application Development and Emerging Technologies
-- **Institution**: University of Science and Technology of Southern Philippines
+- **Institution**: Cavite State University - Bacoor Campus
 - **Academic Year**: 2025-2026
 - **Submission Date**: January 5, 2026
 
