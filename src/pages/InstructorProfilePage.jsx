@@ -69,7 +69,6 @@ export default function InstructorProfilePage() {
       
       setTimeout(() => setPageLoaded(true), 50);
     } catch (error) {
-      console.error("Error loading profile:", error);
       navigate("/instructor/login");
     }
   }, [navigate]);
@@ -185,7 +184,6 @@ export default function InstructorProfilePage() {
       setIsEditing(false);
       showToast("Profile updated successfully!", "success");
     } catch (error) {
-      console.error("Error saving profile:", error);
       showToast("Failed to save profile. Please try again.", "error");
     }
   };

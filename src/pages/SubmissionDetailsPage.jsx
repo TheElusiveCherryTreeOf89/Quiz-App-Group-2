@@ -6,8 +6,26 @@ export default function SubmissionDetailsPage() {
   const location = useLocation();
   const [activeMenu, setActiveMenu] = useState("results");
   const [submission, setSubmission] = useState(null);
+  const [darkMode, setDarkMode] = useState(false);
+
+  // Theme object
+  const theme = {
+    background: darkMode ? '#1a1a1a' : '#f0f0f0',
+    card: darkMode ? '#2d2d2d' : 'white',
+    text: darkMode ? '#ffffff' : '#1a1a1a',
+    textSecondary: darkMode ? '#a0a0a0' : '#666',
+    border: darkMode ? '#404040' : '#eee',
+    sidebarBg: darkMode ? '#2d2d2d' : 'white',
+    sidebarText: darkMode ? '#ffffff' : '#1a1a1a',
+    accent: '#6366F1',
+    error: '#DC2626'
+  };
 
   useEffect(() => {
+    // Load dark mode preference
+    const savedDarkMode = localStorage.getItem("darkMode") === "true";
+    setDarkMode(savedDarkMode);
+    
     // Get submission data from navigation state
     if (location.state && location.state.submission) {
       setSubmission(location.state.submission);
@@ -42,8 +60,8 @@ export default function SubmissionDetailsPage() {
 
   if (!submission) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0f0f0' }}>
-        <div style={{ fontSize: '18px', color: '#666' }}>Loading...</div>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: theme.background }}>
+        <div style={{ fontSize: '18px', color: theme.textSecondary }}>Loading...</div>
       </div>
     );
   }
@@ -64,20 +82,20 @@ export default function SubmissionDetailsPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', backgroundColor: '#f0f0f0' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', backgroundColor: theme.background }}>
       {/* Left Sidebar */}
       <aside style={{
         width: '200px',
-        backgroundColor: 'white',
+        backgroundColor: theme.sidebarBg,
         display: 'flex',
         flexDirection: 'column',
         boxShadow: '2px 0 10px rgba(0,0,0,0.08)',
         flexShrink: 0
       }}>
-        <div style={{ padding: '20px', borderBottom: '1px solid #eee' }}>
+        <div style={{ padding: '20px', borderBottom: `1px solid ${theme.border}` }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '20px', fontWeight: '900' }}>Menu</span>
-            <span style={{ fontSize: '18px', cursor: 'pointer' }}>≡</span>
+            <span style={{ fontSize: '20px', fontWeight: '900', color: theme.text }}>Menu</span>
+            <span style={{ fontSize: '18px', cursor: 'pointer', color: theme.text }}>≡</span>
           </div>
         </div>
 
@@ -93,8 +111,8 @@ export default function SubmissionDetailsPage() {
               marginBottom: '6px',
               borderRadius: '12px',
               border: 'none',
-              backgroundColor: activeMenu === "results" ? '#6366F1' : 'transparent',
-              color: activeMenu === "results" ? 'white' : 'black',
+              backgroundColor: activeMenu === "results" ? theme.accent : 'transparent',
+              color: activeMenu === "results" ? 'white' : theme.sidebarText,
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
@@ -118,7 +136,7 @@ export default function SubmissionDetailsPage() {
               borderRadius: '12px',
               border: 'none',
               backgroundColor: 'transparent',
-              color: 'black',
+              color: theme.sidebarText,
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
@@ -142,7 +160,7 @@ export default function SubmissionDetailsPage() {
               borderRadius: '12px',
               border: 'none',
               backgroundColor: 'transparent',
-              color: 'black',
+              color: theme.sidebarText,
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
@@ -166,7 +184,7 @@ export default function SubmissionDetailsPage() {
               borderRadius: '12px',
               border: 'none',
               backgroundColor: 'transparent',
-              color: 'black',
+              color: theme.sidebarText,
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
@@ -179,7 +197,7 @@ export default function SubmissionDetailsPage() {
           </button>
         </nav>
 
-        <div style={{ padding: '15px 12px', borderTop: '1px solid #eee' }}>
+        <div style={{ padding: '15px 12px', borderTop: `1px solid ${theme.border}` }}>
           <button
             onClick={handleLogout}
             style={{
@@ -191,7 +209,7 @@ export default function SubmissionDetailsPage() {
               borderRadius: '12px',
               border: 'none',
               backgroundColor: 'transparent',
-              color: '#DC2626',
+              color: theme.error,
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',

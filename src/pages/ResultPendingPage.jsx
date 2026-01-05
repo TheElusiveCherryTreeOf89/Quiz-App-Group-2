@@ -24,7 +24,6 @@ export default function ResultPendingPage() {
             navigate("/student/result");
           }
         } catch (error) {
-          console.error("Error checking results:", error);
         }
       };
 
@@ -32,7 +31,6 @@ export default function ResultPendingPage() {
       const interval = setInterval(checkResults, 2000);
       return () => clearInterval(interval);
     } catch (error) {
-      console.error("Error loading result pending page:", error);
       navigate("/login");
     }
   }, [navigate]);

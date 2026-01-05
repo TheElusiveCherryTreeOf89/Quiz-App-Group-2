@@ -60,7 +60,6 @@ const ProfilePage = () => {
       
       setTimeout(() => setPageLoaded(true), 50);
     } catch (error) {
-      console.error("Error loading profile:", error);
       navigate("/login");
     }
   }, [navigate]);
@@ -96,7 +95,6 @@ const ProfilePage = () => {
       setIsEditing(false);
       showToast("Profile updated successfully!", "success");
     } catch (error) {
-      console.error("Error saving profile:", error);
       showToast("Failed to save profile. Please try again.", "error");
     }
   };

@@ -53,7 +53,6 @@ export default function ManageInstructorQuizzesPage() {
       
       setTimeout(() => setPageLoaded(true), 50);
     } catch (error) {
-      console.error("Error loading quizzes page:", error);
       navigate("/instructor/login");
     }
   }, [navigate]);
@@ -63,7 +62,6 @@ export default function ManageInstructorQuizzesPage() {
       const savedQuizzes = JSON.parse(localStorage.getItem("instructorQuizzes") || "[]");
       setQuizzes(savedQuizzes);
     } catch (error) {
-      console.error("Error loading quizzes:", error);
       setQuizzes([]);
     }
   };
@@ -111,7 +109,6 @@ export default function ManageInstructorQuizzesPage() {
         setQuizzes(updatedQuizzes);
         showToast("Quiz deleted successfully", "success");
       } catch (error) {
-        console.error("Error deleting quiz:", error);
         showToast("Failed to delete quiz. Please try again.", "error");
       }
     }
@@ -130,7 +127,6 @@ export default function ManageInstructorQuizzesPage() {
       const quiz = updatedQuizzes.find(q => q.id === quizId);
       showToast(`Quiz ${quiz.published ? 'published' : 'unpublished'} successfully`, "success");
     } catch (error) {
-      console.error("Error toggling quiz status:", error);
       showToast("Failed to update quiz status. Please try again.", "error");
     }
   };
@@ -154,7 +150,6 @@ export default function ManageInstructorQuizzesPage() {
       setQuizzes(updatedQuizzes);
       showToast("Quiz duplicated successfully", "success");
     } catch (error) {
-      console.error("Error duplicating quiz:", error);
       showToast("Failed to duplicate quiz. Please try again.", "error");
     }
   };
@@ -195,7 +190,6 @@ export default function ManageInstructorQuizzesPage() {
         showToast(`${selectedQuizzes.length} quiz(zes) deleted successfully`, "success");
         setSelectedQuizzes([]);
       } catch (error) {
-        console.error("Error deleting quizzes:", error);
         showToast("Failed to delete quizzes. Please try again.", "error");
       }
     }
@@ -214,7 +208,6 @@ export default function ManageInstructorQuizzesPage() {
       showToast(`${selectedQuizzes.length} quiz(zes) published successfully`, "success");
       setSelectedQuizzes([]);
     } catch (error) {
-      console.error("Error publishing quizzes:", error);
       showToast("Failed to publish quizzes. Please try again.", "error");
     }
   };
@@ -232,7 +225,6 @@ export default function ManageInstructorQuizzesPage() {
       showToast(`${selectedQuizzes.length} quiz(zes) unpublished successfully`, "success");
       setSelectedQuizzes([]);
     } catch (error) {
-      console.error("Error unpublishing quizzes:", error);
       showToast("Failed to unpublish quizzes. Please try again.", "error");
     }
   };

@@ -59,7 +59,6 @@ export default function StudentDashboard() {
       // Trigger page load animation
       setTimeout(() => setPageLoaded(true), 50);
     } catch (error) {
-      console.error("Error loading dashboard:", error);
       navigate("/login");
     }
   }, [navigate]);

@@ -87,7 +87,6 @@ export default function InstructorStudentsPage() {
       
       setTimeout(() => setPageLoaded(true), 50);
     } catch (error) {
-      console.error("Error loading students:", error);
     }
   }, [navigate]);
 

@@ -52,7 +52,6 @@ export default function InstructorDashboard() {
       
       setTimeout(() => setPageLoaded(true), 50);
     } catch (error) {
-      console.error("Error loading instructor dashboard:", error);
       navigate("/instructor/login");
     }
   }, [navigate]);
@@ -62,7 +61,6 @@ export default function InstructorDashboard() {
       const quizResults = JSON.parse(localStorage.getItem("quizResults") || "[]");
       setResults(quizResults);
     } catch (error) {
-      console.error("Error loading results:", error);
       setResults([]);
     }
   };
@@ -94,7 +92,6 @@ export default function InstructorDashboard() {
         setResultsReleased(true);
         showToast("Results have been released! Students can now view their scores.", "success");
       } catch (error) {
-        console.error("Error releasing results:", error);
         showToast("Failed to release results. Please try again.", "error");
       }
     }
@@ -870,18 +867,19 @@ export default function InstructorDashboard() {
 
             {/* Average Score */}
             <div style={{
-              backgroundColor: 'white',
+              backgroundColor: theme.card,
               padding: '24px',
               borderRadius: '18px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-              border: '1px solid #e5e5e5'
+              boxShadow: darkMode ? '0 2px 8px rgba(0,0,0,0.3)' : '0 2px 8px rgba(0,0,0,0.08)',
+              border: `1px solid ${theme.border}`,
+              transition: 'background-color 0.3s ease'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
                   <p style={{ fontSize: '14px', color: theme.textSecondary, margin: '0 0 8px 0', fontWeight: '600', transition: 'color 0.3s ease', fontFamily: 'var(--font-body)' }}>
                     Average Score
                   </p>
-                  <p style={{ fontSize: '36px', fontWeight: '900', color: '#6366F1', margin: 0, fontFamily: 'var(--font-heading)' }}>
+                  <p style={{ fontSize: '36px', fontWeight: '900', color: theme.text, margin: 0, transition: 'color 0.3s ease', fontFamily: 'var(--font-heading)' }}>
                     {stats.avgScore}
                   </p>
                 </div>
@@ -903,7 +901,7 @@ export default function InstructorDashboard() {
                   <p style={{ fontSize: '14px', color: theme.textSecondary, margin: '0 0 8px 0', fontWeight: '600', transition: 'color 0.3s ease', fontFamily: 'var(--font-body)' }}>
                     Pass Rate
                   </p>
-                  <p style={{ fontSize: '36px', fontWeight: '900', color: '#22C55E', margin: 0, fontFamily: 'var(--font-heading)' }}>
+                  <p style={{ fontSize: '36px', fontWeight: '900', color: theme.text, margin: 0, transition: 'color 0.3s ease', fontFamily: 'var(--font-heading)' }}>
                     {stats.passRate}%
                   </p>
                 </div>
@@ -1108,17 +1106,17 @@ export default function InstructorDashboard() {
                           key={idx} 
                           onClick={() => navigate('/instructor/submission/' + idx, { state: { submission: result } })}
                           style={{ 
-                            borderBottom: '1px solid #E5E7EB',
+                            borderBottom: `1px solid ${theme.border}`,
                             cursor: 'pointer',
                             transition: 'background-color 0.2s'
                           }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f9fafb'}
                           onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                         >
                           <td style={{ padding: '16px', fontSize: '15px', fontWeight: '600', color: theme.text, transition: 'color 0.3s ease' }}>
                             {result.studentName}
                           </td>
-                          <td style={{ padding: '16px', fontSize: '14px', color: '#666' }}>
+                          <td style={{ padding: '16px', fontSize: '14px', color: theme.textSecondary, transition: 'color 0.3s ease' }}>
                             {result.studentEmail}
                           </td>
                           <td style={{ padding: '16px', textAlign: 'center' }}>

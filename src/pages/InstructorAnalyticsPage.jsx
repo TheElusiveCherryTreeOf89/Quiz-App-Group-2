@@ -131,7 +131,6 @@ export default function InstructorAnalyticsPage() {
       });
 
     } catch (error) {
-      console.error("Error loading analytics:", error);
     }
   }, [navigate]);
 
@@ -221,7 +220,6 @@ export default function InstructorAnalyticsPage() {
       showToast("Analytics report exported successfully!", "success");
     } catch (error) {
       showToast("Failed to export report", "error");
-      console.error("Export error:", error);
     }
   };
 
@@ -324,7 +322,7 @@ export default function InstructorAnalyticsPage() {
                   transform: activeMenu === menu ? 'scale(1.02)' : 'scale(1)'
                 }}
                 onMouseEnter={(e) => {
-                  if (activeMenu !== menu) e.currentTarget.style.backgroundColor = '#f5f5f5';
+                  if (activeMenu !== menu) e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5';
                 }}
                 onMouseLeave={(e) => {
                   if (activeMenu !== menu) e.currentTarget.style.backgroundColor = 'transparent';
@@ -805,7 +803,7 @@ export default function InstructorAnalyticsPage() {
                 <div style={{ fontSize: '32px', fontWeight: '900', color: metric.color, marginBottom: '8px' }}>
                   {metric.value}
                 </div>
-                <div style={{ fontSize: '13px', fontWeight: '600', color: '#666' }}>
+                <div style={{ fontSize: '13px', fontWeight: '600', color: theme.textSecondary, transition: 'color 0.3s ease' }}>
                   {metric.label}
                 </div>
               </div>
@@ -841,14 +839,15 @@ export default function InstructorAnalyticsPage() {
                   return (
                     <div key={range} style={{ animation: `slideIn 0.5s ease-out ${index * 0.1}s both` }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                        <span style={{ fontSize: '13px', fontWeight: '600', color: '#666' }}>{range}%</span>
+                        <span style={{ fontSize: '13px', fontWeight: '600', color: theme.textSecondary, transition: 'color 0.3s ease' }}>{range}%</span>
                         <span style={{ fontSize: '13px', fontWeight: '700', color: colors[index] }}>{count}</span>
                       </div>
                       <div style={{ 
                         height: '28px', 
-                        backgroundColor: '#f0f0f0', 
+                        backgroundColor: darkMode ? '#404040' : '#f0f0f0', 
                         borderRadius: '8px',
-                        overflow: 'hidden'
+                        overflow: 'hidden',
+                        transition: 'background-color 0.3s ease'
                       }}>
                         <div style={{ 
                           height: '100%', 
@@ -917,7 +916,7 @@ export default function InstructorAnalyticsPage() {
                     <div style={{ fontSize: '36px', fontWeight: '900', color: '#22C55E' }}>
                       {Math.round(analytics.passRate)}%
                     </div>
-                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#666' }}>
+                    <div style={{ fontSize: '12px', fontWeight: '600', color: theme.textSecondary, transition: 'color 0.3s ease' }}>
                       Pass Rate
                     </div>
                   </div>
@@ -928,7 +927,7 @@ export default function InstructorAnalyticsPage() {
                     <div style={{ fontSize: '28px', fontWeight: '900', color: '#22C55E' }}>
                       {analytics.passCount}
                     </div>
-                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#666', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: '600', color: theme.textSecondary, display: 'flex', alignItems: 'center', gap: '4px', transition: 'color 0.3s ease' }}>
                       <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#22C55E' }}></span>
                       Passed
                     </div>
@@ -937,7 +936,7 @@ export default function InstructorAnalyticsPage() {
                     <div style={{ fontSize: '28px', fontWeight: '900', color: '#DC2626' }}>
                       {analytics.failCount}
                     </div>
-                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#666', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: '600', color: theme.textSecondary, display: 'flex', alignItems: 'center', gap: '4px', transition: 'color 0.3s ease' }}>
                       <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#DC2626' }}></span>
                       Failed
                     </div>
@@ -974,14 +973,15 @@ export default function InstructorAnalyticsPage() {
                   <div style={{
                     padding: '20px',
                     borderRadius: '12px',
-                    backgroundColor: '#f0fdf4',
-                    border: '2px solid #22C55E'
+                    backgroundColor: darkMode ? '#1e3a1e' : '#f0fdf4',
+                    border: '2px solid #22C55E',
+                    transition: 'background-color 0.3s ease'
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
                       <span style={{ fontSize: '24px' }}>🥇</span>
-                      <span style={{ fontSize: '14px', fontWeight: '700', color: '#666' }}>BEST PERFORMING</span>
+                      <span style={{ fontSize: '14px', fontWeight: '700', color: theme.textSecondary, transition: 'color 0.3s ease' }}>BEST PERFORMING</span>
                     </div>
-                    <div style={{ fontSize: '18px', fontWeight: '700', color: '#1a1a1a', marginBottom: '8px' }}>
+                    <div style={{ fontSize: '18px', fontWeight: '700', color: theme.text, marginBottom: '8px', transition: 'color 0.3s ease' }}>
                       {analytics.quizPerformance[0].title}
                     </div>
                     <div style={{ display: 'flex', gap: '20px' }}>
@@ -989,13 +989,13 @@ export default function InstructorAnalyticsPage() {
                         <span style={{ fontSize: '24px', fontWeight: '900', color: '#22C55E' }}>
                           {Math.round(analytics.quizPerformance[0].avgScore)}%
                         </span>
-                        <span style={{ fontSize: '12px', color: '#666', marginLeft: '6px' }}>avg score</span>
+                        <span style={{ fontSize: '12px', color: theme.textSecondary, marginLeft: '6px', transition: 'color 0.3s ease' }}>avg score</span>
                       </div>
                       <div>
                         <span style={{ fontSize: '24px', fontWeight: '900', color: '#6366F1' }}>
                           {analytics.quizPerformance[0].submissions}
                         </span>
-                        <span style={{ fontSize: '12px', color: '#666', marginLeft: '6px' }}>submissions</span>
+                        <span style={{ fontSize: '12px', color: theme.textSecondary, marginLeft: '6px', transition: 'color 0.3s ease' }}>submissions</span>
                       </div>
                     </div>
                   </div>
@@ -1006,14 +1006,15 @@ export default function InstructorAnalyticsPage() {
                   <div style={{
                     padding: '20px',
                     borderRadius: '12px',
-                    backgroundColor: '#fef2f2',
-                    border: '2px solid #DC2626'
+                    backgroundColor: darkMode ? '#3a1e1e' : '#fef2f2',
+                    border: '2px solid #DC2626',
+                    transition: 'background-color 0.3s ease'
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
                       <span style={{ fontSize: '24px' }}>⚠️</span>
-                      <span style={{ fontSize: '14px', fontWeight: '700', color: '#666' }}>NEEDS ATTENTION</span>
+                      <span style={{ fontSize: '14px', fontWeight: '700', color: theme.textSecondary, transition: 'color 0.3s ease' }}>NEEDS ATTENTION</span>
                     </div>
-                    <div style={{ fontSize: '18px', fontWeight: '700', color: '#1a1a1a', marginBottom: '8px' }}>
+                    <div style={{ fontSize: '18px', fontWeight: '700', color: theme.text, marginBottom: '8px', transition: 'color 0.3s ease' }}>
                       {analytics.quizPerformance[analytics.quizPerformance.length - 1].title}
                     </div>
                     <div style={{ display: 'flex', gap: '20px' }}>
@@ -1021,13 +1022,13 @@ export default function InstructorAnalyticsPage() {
                         <span style={{ fontSize: '24px', fontWeight: '900', color: '#DC2626' }}>
                           {Math.round(analytics.quizPerformance[analytics.quizPerformance.length - 1].avgScore)}%
                         </span>
-                        <span style={{ fontSize: '12px', color: '#666', marginLeft: '6px' }}>avg score</span>
+                        <span style={{ fontSize: '12px', color: theme.textSecondary, marginLeft: '6px', transition: 'color 0.3s ease' }}>avg score</span>
                       </div>
                       <div>
                         <span style={{ fontSize: '24px', fontWeight: '900', color: '#6366F1' }}>
                           {analytics.quizPerformance[analytics.quizPerformance.length - 1].submissions}
                         </span>
-                        <span style={{ fontSize: '12px', color: '#666', marginLeft: '6px' }}>submissions</span>
+                        <span style={{ fontSize: '12px', color: theme.textSecondary, marginLeft: '6px', transition: 'color 0.3s ease' }}>submissions</span>
                       </div>
                     </div>
                   </div>
@@ -1057,15 +1058,16 @@ export default function InstructorAnalyticsPage() {
                     style={{
                       padding: '16px',
                       borderRadius: '12px',
-                      backgroundColor: '#fef3c7',
+                      backgroundColor: darkMode ? '#3a2f1e' : '#fef3c7',
                       border: '2px solid #F59E0B',
-                      animation: `slideUp 0.4s ease-out ${0.3 + index * 0.1}s both`
+                      animation: `slideUp 0.4s ease-out ${0.3 + index * 0.1}s both`,
+                      transition: 'background-color 0.3s ease'
                     }}
                   >
                     <div style={{ fontSize: '24px', fontWeight: '900', color: '#F59E0B', marginBottom: '4px' }}>
                       {count}
                     </div>
-                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'capitalize' }}>
+                    <div style={{ fontSize: '12px', fontWeight: '600', color: theme.textSecondary, textTransform: 'capitalize', transition: 'color 0.3s ease' }}>
                       {type.replace('_', ' ')}
                     </div>
                   </div>

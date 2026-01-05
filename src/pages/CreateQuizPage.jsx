@@ -266,7 +266,6 @@ export default function CreateQuizPage() {
       showToast("Quiz saved successfully!", "success");
       navigate("/instructor/quizzes");
     } catch (error) {
-      console.error("Error saving quiz:", error);
       showToast("Failed to save quiz. Please try again.", "error");
     }
   };

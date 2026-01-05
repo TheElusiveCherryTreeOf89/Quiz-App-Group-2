@@ -32,7 +32,6 @@ export default function MyResultPage() {
       // Trigger page load animation
       setTimeout(() => setPageLoaded(true), 50);
     } catch (error) {
-      console.error("Error loading result page:", error);
       navigate("/login");
     }
   }, [navigate]);
@@ -176,7 +175,7 @@ export default function MyResultPage() {
 
   if (!user) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f5f5' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: theme.background }}>
         <div style={{ fontSize: '18px', color: theme.textSecondary, textAlign: 'center', padding: '20px' }}>Loading...</div>
       </div>
     );
