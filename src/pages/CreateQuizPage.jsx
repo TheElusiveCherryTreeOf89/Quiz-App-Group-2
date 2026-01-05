@@ -1,11 +1,21 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToastContext } from "../App";
+import logo from "../assets/1.svg";
 
 export default function CreateQuizPage() {
   const navigate = useNavigate();
   const showToast = useToastContext();
   const [activeMenu, setActiveMenu] = useState("quizzes");
+  const [darkMode, setDarkMode] = useState(false);
+  const [pageLoaded, setPageLoaded] = useState(false);
+
+  // Load dark mode and trigger animation
+  useEffect(() => {
+    const savedDarkMode = localStorage.getItem("darkMode") === "true";
+    setDarkMode(savedDarkMode);
+    setTimeout(() => setPageLoaded(true), 50);
+  }, []);
 
   // Quiz Details State
   const [quizTitle, setQuizTitle] = useState("");
@@ -32,6 +42,13 @@ export default function CreateQuizPage() {
       imageUrl: ""
     }
   ]);
+
+  const toggleDarkMode = () => {
+    const newMode = !darkMode;
+    setDarkMode(newMode);
+    localStorage.setItem("darkMode", newMode.toString());
+    showToast(`Dark mode ${newMode ? 'enabled' : 'disabled'}`, "info");
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("currentUser");
@@ -254,21 +271,46 @@ export default function CreateQuizPage() {
     }
   };
 
+  // Theme object
+  const theme = darkMode ? {
+    background: '#1a1a1a',
+    card: '#2d2d2d',
+    text: '#ffffff',
+    textSecondary: '#a0a0a0',
+    border: '#404040',
+    sidebarBg: '#2d2d2d'
+  } : {
+    background: '#f0f0f0',
+    card: 'white',
+    text: '#1a1a1a',
+    textSecondary: '#666',
+    border: '#eee',
+    sidebarBg: 'white'
+  };
+
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', backgroundColor: '#f0f0f0' }}>
+    <div style={{ 
+      minHeight: '100vh', 
+      display: 'flex', 
+      backgroundColor: theme.background,
+      opacity: pageLoaded ? 1 : 0,
+      transform: pageLoaded ? 'translateY(0)' : 'translateY(20px)',
+      transition: 'opacity 0.5s ease-out, transform 0.5s ease-out, background-color 0.3s ease'
+    }}>
       {/* Left Sidebar */}
       <aside style={{
         width: '200px',
-        backgroundColor: 'white',
+        backgroundColor: theme.sidebarBg,
         display: 'flex',
         flexDirection: 'column',
-        boxShadow: '2px 0 10px rgba(0,0,0,0.08)',
-        flexShrink: 0
+        boxShadow: darkMode ? '2px 0 10px rgba(0,0,0,0.5)' : '2px 0 10px rgba(0,0,0,0.08)',
+        flexShrink: 0,
+        transition: 'background-color 0.3s ease'
       }}>
-        <div style={{ padding: '20px', borderBottom: '1px solid #eee' }}>
+        <div style={{ padding: '20px', borderBottom: `1px solid ${theme.border}`, transition: 'border-color 0.3s ease' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '20px', fontWeight: '900' }}>Menu</span>
-            <span style={{ fontSize: '18px', cursor: 'pointer' }}>≡</span>
+            <span style={{ fontSize: '20px', fontWeight: '900', color: theme.text, transition: 'color 0.3s ease' }}>Menu</span>
+            <span style={{ fontSize: '18px', cursor: 'pointer', color: theme.text, transition: 'color 0.3s ease' }}>≡</span>
           </div>
         </div>
 
@@ -285,7 +327,7 @@ export default function CreateQuizPage() {
               borderRadius: '12px',
               border: 'none',
               backgroundColor: activeMenu === "results" ? '#6366F1' : 'transparent',
-              color: activeMenu === "results" ? 'white' : 'black',
+              color: activeMenu === "results" ? 'white' : theme.text,
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
@@ -309,7 +351,7 @@ export default function CreateQuizPage() {
               borderRadius: '12px',
               border: 'none',
               backgroundColor: activeMenu === "quizzes" ? '#6366F1' : 'transparent',
-              color: activeMenu === "quizzes" ? 'white' : 'black',
+              color: activeMenu === "quizzes" ? 'white' : theme.text,
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
@@ -333,7 +375,7 @@ export default function CreateQuizPage() {
               borderRadius: '12px',
               border: 'none',
               backgroundColor: activeMenu === "students" ? '#6366F1' : 'transparent',
-              color: activeMenu === "students" ? 'white' : 'black',
+              color: activeMenu === "students" ? 'white' : theme.text,
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
@@ -357,7 +399,7 @@ export default function CreateQuizPage() {
               borderRadius: '12px',
               border: 'none',
               backgroundColor: activeMenu === "analytics" ? '#6366F1' : 'transparent',
-              color: activeMenu === "analytics" ? 'white' : 'black',
+              color: activeMenu === "analytics" ? 'white' : theme.text,
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
@@ -370,7 +412,7 @@ export default function CreateQuizPage() {
           </button>
         </nav>
 
-        <div style={{ padding: '15px 12px', borderTop: '1px solid #eee' }}>
+        <div style={{ padding: '15px 12px', borderTop: `1px solid ${theme.border}`, transition: 'border-color 0.3s ease' }}>
           <button
             onClick={handleLogout}
             style={{
@@ -381,8 +423,8 @@ export default function CreateQuizPage() {
               padding: '12px 16px',
               borderRadius: '12px',
               border: 'none',
-              backgroundColor: 'transparent',
-              color: '#DC2626',
+              backgroundColor: '#DC2626',
+              color: 'white',
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
@@ -418,7 +460,13 @@ export default function CreateQuizPage() {
             QuizApp - Instructor
           </div>
           <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-            <span style={{ fontSize: '20px', cursor: 'pointer', filter: 'brightness(0) invert(1)' }}>🌙</span>
+            <span 
+              onClick={toggleDarkMode}
+              style={{ fontSize: '20px', cursor: 'pointer', filter: 'brightness(0) invert(1)' }}
+              title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {darkMode ? '☀️' : '🌙'}
+            </span>
             <span style={{ fontSize: '20px', cursor: 'pointer', filter: 'brightness(0) invert(1)' }}>🔔</span>
             <span style={{ fontSize: '20px', cursor: 'pointer', filter: 'brightness(0) invert(1)' }}>👤</span>
           </div>
@@ -442,15 +490,17 @@ export default function CreateQuizPage() {
                 <h1 style={{
                   fontSize: '32px',
                   fontWeight: '900',
-                  color: '#1a1a1a',
-                  margin: 0
+                  color: theme.text,
+                  margin: 0,
+                  transition: 'color 0.3s ease'
                 }}>
                   Create New Quiz
                 </h1>
                 <p style={{
                   fontSize: '14px',
-                  color: '#666',
-                  marginTop: '8px'
+                  color: theme.textSecondary,
+                  marginTop: '8px',
+                  transition: 'color 0.3s ease'
                 }}>
                   Build your quiz with questions, options, and settings
                 </p>

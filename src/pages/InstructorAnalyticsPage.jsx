@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToastContext } from "../App";
+import logo from "../assets/1.svg";
 
 export default function InstructorAnalyticsPage() {
   const navigate = useNavigate();
@@ -14,6 +15,7 @@ export default function InstructorAnalyticsPage() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [user, setUser] = useState(null);
+  const [pageLoaded, setPageLoaded] = useState(false);
 
   // Handle window resize for mobile responsiveness
   useEffect(() => {
@@ -110,6 +112,8 @@ export default function InstructorAnalyticsPage() {
       setDarkMode(savedDarkMode);
       
       setUser(user);
+
+      setTimeout(() => setPageLoaded(true), 50);
 
       setAnalytics({
         totalQuizzes,
@@ -247,7 +251,15 @@ export default function InstructorAnalyticsPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', backgroundColor: theme.background, position: 'relative', transition: 'background-color 0.3s ease' }}>
+    <div style={{ 
+      minHeight: '100vh', 
+      display: 'flex', 
+      backgroundColor: theme.background, 
+      position: 'relative',
+      opacity: pageLoaded ? 1 : 0,
+      transform: pageLoaded ? 'translateY(0)' : 'translateY(20px)',
+      transition: 'opacity 0.5s ease-out, transform 0.5s ease-out, background-color 0.3s ease'
+    }}>
       {/* Mobile Overlay */}
       {isMobile && sidebarOpen && (
         <div 

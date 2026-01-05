@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToastContext } from "../App";
+import logo from "../assets/1.svg";
 
 export default function InstructorStudentsPage() {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ export default function InstructorStudentsPage() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [user, setUser] = useState(null);
+  const [pageLoaded, setPageLoaded] = useState(false);
 
   // Handle window resize for mobile responsiveness
   useEffect(() => {
@@ -38,35 +40,38 @@ export default function InstructorStudentsPage() {
         return;
       }
 
-      // Extract unique students from quiz results
+      // Get all registered students from localStorage
+      const registeredUsers = JSON.parse(localStorage.getItem("registeredUsers") || "[]");
+      const studentUsers = registeredUsers.filter(u => u.role === "student");
+      
+      // Get quiz results to calculate stats
       const results = JSON.parse(localStorage.getItem("quizResults") || "[]");
-      const studentMap = new Map();
-
-      results.forEach(result => {
-        if (!studentMap.has(result.studentEmail)) {
-          studentMap.set(result.studentEmail, {
-            name: result.studentName,
-            email: result.studentEmail,
-            studentId: result.studentId || "N/A",
-            quizzesTaken: 0,
-            totalScore: 0,
-            lastActivity: result.submittedAt
-          });
-        }
-
-        const student = studentMap.get(result.studentEmail);
-        student.quizzesTaken++;
-        student.totalScore += (result.score / result.totalQuestions * 100);
+      
+      // Build student list with stats
+      const studentsList = studentUsers.map(student => {
+        const studentResults = results.filter(r => r.studentEmail === student.email);
+        const quizzesTaken = studentResults.length;
+        const totalScore = studentResults.reduce((sum, r) => sum + (r.score / r.totalQuestions * 100), 0);
+        const averageScore = quizzesTaken > 0 ? totalScore / quizzesTaken : 0;
         
-        if (new Date(result.submittedAt) > new Date(student.lastActivity)) {
-          student.lastActivity = result.submittedAt;
-        }
+        // Find last activity
+        const lastActivity = studentResults.length > 0
+          ? studentResults.reduce((latest, r) => 
+              new Date(r.submittedAt) > new Date(latest) ? r.submittedAt : latest,
+              studentResults[0].submittedAt
+            )
+          : new Date().toISOString();
+        
+        return {
+          name: student.name,
+          email: student.email,
+          studentId: student.studentId || "N/A",
+          quizzesTaken,
+          totalScore,
+          averageScore,
+          lastActivity
+        };
       });
-
-      const studentsList = Array.from(studentMap.values()).map(student => ({
-        ...student,
-        averageScore: student.quizzesTaken > 0 ? student.totalScore / student.quizzesTaken : 0
-      }));
 
       setStudents(studentsList);
       
@@ -79,6 +84,8 @@ export default function InstructorStudentsPage() {
       setDarkMode(savedDarkMode);
       
       setUser(user);
+      
+      setTimeout(() => setPageLoaded(true), 50);
     } catch (error) {
       console.error("Error loading students:", error);
     }
@@ -172,7 +179,15 @@ export default function InstructorStudentsPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', backgroundColor: theme.background, position: 'relative', transition: 'background-color 0.3s ease' }}>
+    <div style={{ 
+      minHeight: '100vh', 
+      display: 'flex', 
+      backgroundColor: theme.background, 
+      position: 'relative',
+      opacity: pageLoaded ? 1 : 0,
+      transform: pageLoaded ? 'translateY(0)' : 'translateY(20px)',
+      transition: 'opacity 0.5s ease-out, transform 0.5s ease-out, background-color 0.3s ease'
+    }}>
       {/* Mobile Overlay */}
       {isMobile && sidebarOpen && (
         <div 

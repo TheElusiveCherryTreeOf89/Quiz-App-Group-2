@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToastContext } from "../../App";
+import logo from "../../assets/1.svg";
 
 export default function InstructorDashboard() {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ export default function InstructorDashboard() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [pageLoaded, setPageLoaded] = useState(false);
 
   useEffect(() => {
     const handleResize = () => {
@@ -47,6 +49,8 @@ export default function InstructorDashboard() {
       // Load dark mode preference
       const savedDarkMode = localStorage.getItem("darkMode") === "true";
       setDarkMode(savedDarkMode);
+      
+      setTimeout(() => setPageLoaded(true), 50);
     } catch (error) {
       console.error("Error loading instructor dashboard:", error);
       navigate("/instructor/login");
@@ -210,7 +214,15 @@ export default function InstructorDashboard() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', backgroundColor: theme.background, position: 'relative', transition: 'background-color 0.3s ease' }}>
+    <div style={{ 
+      minHeight: '100vh', 
+      display: 'flex', 
+      backgroundColor: theme.background, 
+      position: 'relative',
+      opacity: pageLoaded ? 1 : 0,
+      transform: pageLoaded ? 'translateY(0)' : 'translateY(20px)',
+      transition: 'opacity 0.5s ease-out, transform 0.5s ease-out, background-color 0.3s ease'
+    }}>
       {/* Mobile Overlay */}
       {isMobile && sidebarOpen && (
         <div 
@@ -464,7 +476,7 @@ export default function InstructorDashboard() {
 
             {/* Logo */}
             <img 
-              src="/src/assets/1.svg" 
+              src={logo} 
               alt="QuizApp Logo" 
               onClick={() => navigate("/")}
               style={{ 
