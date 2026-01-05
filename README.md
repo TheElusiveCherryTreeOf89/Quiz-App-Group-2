@@ -411,8 +411,8 @@ This project is developed for educational purposes as part of the DCIT 26 course
 
 ## 🙏 Acknowledgments
 
-- **Course Instructor**: For guidance and project requirements
-- **University of Science and Technology of Southern Philippines**: For providing the learning environment
+- **Edan Belgica**: For guidance and project requirements
+- **Cavite State University - Bacoor Campus**: For providing the learning environment
 - **React & Vite Communities**: For excellent documentation and tools
 - **Open Source Contributors**: For the libraries and frameworks used
 
