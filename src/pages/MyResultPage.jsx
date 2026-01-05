@@ -18,6 +18,7 @@ export default function MyResultPage() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [pageLoaded, setPageLoaded] = useState(false);
 
   useEffect(() => {
     try {
@@ -27,6 +28,9 @@ export default function MyResultPage() {
         return;
       }
       setUser(currentUser);
+      
+      // Trigger page load animation
+      setTimeout(() => setPageLoaded(true), 50);
     } catch (error) {
       console.error("Error loading result page:", error);
       navigate("/login");
@@ -179,7 +183,15 @@ export default function MyResultPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', backgroundColor: theme.background, position: 'relative', transition: 'background-color 0.3s ease' }}>
+    <div style={{ 
+      minHeight: '100vh', 
+      display: 'flex', 
+      backgroundColor: theme.background, 
+      position: 'relative',
+      opacity: pageLoaded ? 1 : 0,
+      transform: pageLoaded ? 'translateY(0)' : 'translateY(20px)',
+      transition: 'opacity 0.5s ease-out, transform 0.5s ease-out, background-color 0.3s ease'
+    }}>
       {/* Left Sidebar */}
       <aside style={{
         width: '200px',

@@ -14,6 +14,7 @@ export default function StudentDashboard() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [darkMode, setDarkMode] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [pageLoaded, setPageLoaded] = useState(false);
 
   const notifications = [
     { id: 1, text: "A quiz has been posted!", time: "Now" },
@@ -54,6 +55,9 @@ export default function StudentDashboard() {
       // Load dark mode preference
       const savedDarkMode = localStorage.getItem("darkMode") === "true";
       setDarkMode(savedDarkMode);
+      
+      // Trigger page load animation
+      setTimeout(() => setPageLoaded(true), 50);
     } catch (error) {
       console.error("Error loading dashboard:", error);
       navigate("/login");
@@ -128,7 +132,15 @@ export default function StudentDashboard() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', backgroundColor: theme.background, position: 'relative', transition: 'background-color 0.3s ease' }}>
+    <div style={{ 
+      minHeight: '100vh', 
+      display: 'flex', 
+      backgroundColor: theme.background, 
+      position: 'relative',
+      opacity: pageLoaded ? 1 : 0,
+      transform: pageLoaded ? 'translateY(0)' : 'translateY(20px)',
+      transition: 'opacity 0.5s ease-out, transform 0.5s ease-out, background-color 0.3s ease'
+    }}>
       {/* Mobile Overlay */}
       {isMobile && sidebarOpen && (
         <div 
@@ -784,7 +796,9 @@ export default function StudentDashboard() {
                         borderBottom: index < filteredQuizzes.length - 1 ? `1px solid ${theme.border}` : 'none',
                         flexDirection: isMobile ? 'column' : 'row',
                         gap: isMobile ? '12px' : '18px',
-                        transition: 'border-bottom-color 0.3s ease'
+                        opacity: pageLoaded ? 1 : 0,
+                        transform: pageLoaded ? 'translateX(0)' : 'translateX(-20px)',
+                        transition: `all 0.5s ease-out ${index * 0.1}s, border-bottom-color 0.3s ease`
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '18px', width: isMobile ? '100%' : 'auto' }}>

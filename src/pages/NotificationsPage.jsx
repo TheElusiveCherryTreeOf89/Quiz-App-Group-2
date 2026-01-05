@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 const NotificationsPage = () => {
   const [activeMenu, setActiveMenu] = useState("notifications");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [pageLoaded, setPageLoaded] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem("darkMode");
@@ -31,6 +32,7 @@ const NotificationsPage = () => {
     if (saved) {
       setDarkMode(JSON.parse(saved));
     }
+    setTimeout(() => setPageLoaded(true), 50);
   }, []);
 
   // Toggle dark mode
@@ -153,7 +155,15 @@ const NotificationsPage = () => {
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', backgroundColor: theme.background, position: 'relative', transition: 'background-color 0.3s ease' }}>
+    <div style={{ 
+      minHeight: '100vh', 
+      display: 'flex', 
+      backgroundColor: theme.background, 
+      position: 'relative',
+      opacity: pageLoaded ? 1 : 0,
+      transform: pageLoaded ? 'translateY(0)' : 'translateY(20px)',
+      transition: 'opacity 0.5s ease-out, transform 0.5s ease-out, background-color 0.3s ease'
+    }}>
       {/* Mobile Overlay */}
       {isMobile && sidebarOpen && (
         <div

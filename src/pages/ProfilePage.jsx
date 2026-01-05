@@ -5,6 +5,7 @@ import { useToastContext } from "../App";
 const ProfilePage = () => {
   const [activeMenu, setActiveMenu] = useState("profile");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [pageLoaded, setPageLoaded] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const navigate = useNavigate();
   const showToast = useToastContext();
@@ -56,6 +57,8 @@ const ProfilePage = () => {
       // Load dark mode preference
       const savedDarkMode = localStorage.getItem("darkMode") === "true";
       setDarkMode(savedDarkMode);
+      
+      setTimeout(() => setPageLoaded(true), 50);
     } catch (error) {
       console.error("Error loading profile:", error);
       navigate("/login");
@@ -139,7 +142,15 @@ const ProfilePage = () => {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', backgroundColor: theme.background, position: 'relative', transition: 'background-color 0.3s ease' }}>
+    <div style={{ 
+      minHeight: '100vh', 
+      display: 'flex', 
+      backgroundColor: theme.background, 
+      position: 'relative',
+      opacity: pageLoaded ? 1 : 0,
+      transform: pageLoaded ? 'translateY(0)' : 'translateY(20px)',
+      transition: 'opacity 0.5s ease-out, transform 0.5s ease-out, background-color 0.3s ease'
+    }}>
       {/* Mobile Overlay */}
       {isMobile && sidebarOpen && (
         <div
