@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quiz API Complete Test Suite</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; }
+        h1 { color: #333; border-bottom: 3px solid #4CAF50; padding-bottom: 10px; }
+        h2 { color: #555; margin-top: 30px; }
+        .test-section { background: #f9f9f9; padding: 20px; margin: 15px 0; border-radius: 5px; border-left: 4px solid #2196F3; }
+        button { background: #4CAF50; color: white; border: none; padding: 12px 24px; cursor: pointer; border-radius: 5px; font-size: 14px; margin: 5px; }
+        button:hover { background: #45a049; }
+        button.secondary { background: #2196F3; }
+        button.danger { background: #f44336; }
+        .result { margin-top: 10px; padding: 15px; border-radius: 5px; font-family: monospace; font-size: 12px; white-space: pre-wrap; word-wrap: break-word; }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .status { display: inline-block; padding: 5px 10px; border-radius: 3px; font-weight: bold; margin-right: 10px; }
+        .status.pass { background: #4CAF50; color: white; }
+        .status.fail { background: #f44336; color: white; }
+        .status.pending { background: #ff9800; color: white; }
+        code { background: #e8e8e8; padding: 2px 6px; border-radius: 3px; }
+        .step { margin: 10px 0; padding: 10px; background: white; border-left: 3px solid #4CAF50; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🧪 Quiz API Complete Test Suite</h1>
+    <p><strong>Backend Status:</strong> <span id="backend-status" class="status pending">CHECKING...</span></p>
+    <p><strong>Database Status:</strong> <span id="db-status" class="status pending">CHECKING...</span></p>
+
+    <div class="test-section">
+        <h2>📋 Setup Checklist</h2>
+        <div class="step">
+            <strong>Step 1:</strong> Make sure XAMPP Apache and MySQL are running (green in XAMPP Control Panel)
+        </div>
+        <div class="step">
+            <strong>Step 2:</strong> Open phpMyAdmin: <a href="http://localhost/phpmyadmin" target="_blank">http://localhost/phpmyadmin</a>
+        </div>
+        <div class="step">
+            <strong>Step 3:</strong> Click "SQL" tab and run the schema from: <code>C:\xampp\htdocs\quiz-api\database\schema.sql</code>
+        </div>
+        <div class="step">
+            <strong>Step 4:</strong> Run tests below to verify everything works!
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>🔐 Authentication Tests</h2>
+        <button onclick="testLogin()">Test Login</button>
+        <button onclick="testRegister()" class="secondary">Test Register</button>
+        <div id="auth-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>✏️ Instructor Quiz Creation (NEW)</h2>
+        <button onclick="testCreateQuiz()">Create Sample Quiz</button>
+        <button onclick="testGetInstructorQuizzes()" class="secondary">Get My Quizzes</button>
+        <button onclick="testEditQuiz()" class="secondary">Edit Quiz</button>
+        <button onclick="testDeleteQuiz()" class="danger">Delete Quiz</button>
+        <div id="quiz-crud-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>📝 Student Quiz Tests</h2>
+        <button onclick="testGetQuizzes()">Get All Quizzes</button>
+        <button onclick="testGetQuestions()" class="secondary">Get Quiz Questions</button>
+        <button onclick="testSubmitQuiz()" class="secondary">Submit Quiz</button>
+        <div id="student-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>📊 Results & Notifications</h2>
+        <button onclick="testGetResults()">Get Student Results</button>
+        <button onclick="testReleaseResults()" class="secondary">Release Results</button>
+        <button onclick="testGetNotifications()" class="secondary">Get Notifications</button>
+        <div id="results-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🎯 Run All Tests</h2>
+        <button onclick="runAllTests()" style="font-size: 16px; padding: 15px 30px;">▶️ RUN ALL TESTS</button>
+        <div id="all-tests-result"></div>
+    </div>
+</div>
+
+<script>
+let testUserId = null;
+let testInstructorId = null;
+let testQuizId = null;
+
+async function checkStatus() {
+    try {
+        const response = await fetch('config/database.php');
+        if (response.ok) {
+            document.getElementById('backend-status').textContent = 'ONLINE';
+            document.getElementById('backend-status').className = 'status pass';
+        }
+    } catch (e) {
+        document.getElementById('backend-status').textContent = 'OFFLINE';
+        document.getElementById('backend-status').className = 'status fail';
+    }
+
+    try {
+        const response = await fetch('test.php');
+        const text = await response.text();
+        if (text.includes('quiz_app')) {
+            document.getElementById('db-status').textContent = 'CONNECTED';
+            document.getElementById('db-status').className = 'status pass';
+        } else {
+            document.getElementById('db-status').textContent = 'DATABASE NOT FOUND';
+            document.getElementById('db-status').className = 'status fail';
+        }
+    } catch (e) {
+        document.getElementById('db-status').textContent = 'ERROR';
+        document.getElementById('db-status').className = 'status fail';
+    }
+}
+
+async function testLogin() {
+    const resultDiv = document.getElementById('auth-result');
+    resultDiv.innerHTML = '<p>Testing login...</p>';
+    
+    try {
+        const response = await fetch('api/auth/login.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: 'student@example.com', password: 'password' })
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            testUserId = data.user.id;
+            resultDiv.innerHTML = `<div class="result success">✅ LOGIN SUCCESS\n\n${JSON.stringify(data, null, 2)}</div>`;
+        } else {
+            resultDiv.innerHTML = `<div class="result error">❌ LOGIN FAILED\n\n${JSON.stringify(data, null, 2)}</div>`;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `<div class="result error">❌ ERROR: ${error.message}</div>`;
+    }
+}
+
+async function testRegister() {
+    const resultDiv = document.getElementById('auth-result');
+    resultDiv.innerHTML = '<p>Testing registration...</p>';
+    
+    try {
+        const randomEmail = `test${Date.now()}@example.com`;
+        const response = await fetch('api/auth/register.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                email: randomEmail, 
+                password: 'password123', 
+                name: 'Test User',
+                role: 'student'
+            })
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            resultDiv.innerHTML = `<div class="result success">✅ REGISTRATION SUCCESS\n\n${JSON.stringify(data, null, 2)}</div>`;
+        } else {
+            resultDiv.innerHTML = `<div class="result error">❌ REGISTRATION FAILED\n\n${JSON.stringify(data, null, 2)}</div>`;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `<div class="result error">❌ ERROR: ${error.message}</div>`;
+    }
+}
+
+async function testCreateQuiz() {
+    const resultDiv = document.getElementById('quiz-crud-result');
+    resultDiv.innerHTML = '<p>Creating quiz...</p>';
+    
+    const sampleQuiz = {
+        instructor_id: 1,
+        title: "Test Quiz - " + new Date().toLocaleTimeString(),
+        description: "This is a test quiz created via API",
+        timeLimit: 600,
+        passingScore: 70,
+        maxViolations: 3,
+        shuffleQuestions: true,
+        shuffleOptions: false,
+        published: true,
+        questions: [
+            {
+                id: 1,
+                type: "multiple-choice",
+                question: "What is 5 + 3?",
+                options: ["6", "7", "8", "9"],
+                correctAnswer: 2,
+                points: 1
+            },
+            {
+                id: 2,
+                type: "true-false",
+                question: "The Earth is flat",
+                options: ["True", "False"],
+                correctAnswer: 1,
+                points: 1
+            }
+        ]
+    };
+    
+    try {
+        const response = await fetch('api/instructor/create-quiz.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(sampleQuiz)
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            testQuizId = data.quiz_id;
+            resultDiv.innerHTML = `<div class="result success">✅ QUIZ CREATED\n\nQuiz ID: ${data.quiz_id}\n\n${JSON.stringify(data, null, 2)}</div>`;
+        } else {
+            resultDiv.innerHTML = `<div class="result error">❌ CREATE FAILED\n\n${JSON.stringify(data, null, 2)}</div>`;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `<div class="result error">❌ ERROR: ${error.message}</div>`;
+    }
+}
+
+async function testGetInstructorQuizzes() {
+    const resultDiv = document.getElementById('quiz-crud-result');
+    resultDiv.innerHTML = '<p>Fetching instructor quizzes...</p>';
+    
+    try {
+        const response = await fetch('api/instructor/get-quizzes.php?instructor_id=1');
+        const data = await response.json();
+        
+        if (data.success) {
+            resultDiv.innerHTML = `<div class="result success">✅ FETCHED ${data.total} QUIZZES\n\n${JSON.stringify(data, null, 2)}</div>`;
+        } else {
+            resultDiv.innerHTML = `<div class="result error">❌ FETCH FAILED\n\n${JSON.stringify(data, null, 2)}</div>`;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `<div class="result error">❌ ERROR: ${error.message}</div>`;
+    }
+}
+
+async function testEditQuiz() {
+    const resultDiv = document.getElementById('quiz-crud-result');
+    
+    if (!testQuizId) {
+        resultDiv.innerHTML = '<div class="result error">❌ Create a quiz first!</div>';
+        return;
+    }
+    
+    resultDiv.innerHTML = '<p>Editing quiz...</p>';
+    
+    try {
+        const response = await fetch('api/instructor/edit-quiz.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                quiz_id: testQuizId,
+                instructor_id: 1,
+                title: "EDITED Quiz - " + new Date().toLocaleTimeString(),
+                passingScore: 80
+            })
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            resultDiv.innerHTML = `<div class="result success">✅ QUIZ EDITED\n\n${JSON.stringify(data, null, 2)}</div>`;
+        } else {
+            resultDiv.innerHTML = `<div class="result error">❌ EDIT FAILED\n\n${JSON.stringify(data, null, 2)}</div>`;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `<div class="result error">❌ ERROR: ${error.message}</div>`;
+    }
+}
+
+async function testDeleteQuiz() {
+    const resultDiv = document.getElementById('quiz-crud-result');
+    
+    if (!testQuizId) {
+        resultDiv.innerHTML = '<div class="result error">❌ Create a quiz first!</div>';
+        return;
+    }
+    
+    if (!confirm('Delete test quiz ID ' + testQuizId + '?')) return;
+    
+    resultDiv.innerHTML = '<p>Deleting quiz...</p>';
+    
+    try {
+        const response = await fetch('api/instructor/delete-quiz.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                quiz_id: testQuizId,
+                instructor_id: 1
+            })
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            testQuizId = null;
+            resultDiv.innerHTML = `<div class="result success">✅ QUIZ DELETED\n\n${JSON.stringify(data, null, 2)}</div>`;
+        } else {
+            resultDiv.innerHTML = `<div class="result error">❌ DELETE FAILED\n\n${JSON.stringify(data, null, 2)}</div>`;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `<div class="result error">❌ ERROR: ${error.message}</div>`;
+    }
+}
+
+async function testGetQuizzes() {
+    const resultDiv = document.getElementById('student-result');
+    resultDiv.innerHTML = '<p>Fetching quizzes...</p>';
+    
+    try {
+        const response = await fetch('api/quiz/get-quizzes.php');
+        const data = await response.json();
+        
+        if (data.success) {
+            resultDiv.innerHTML = `<div class="result success">✅ FOUND ${data.quizzes.length} QUIZZES\n\n${JSON.stringify(data, null, 2)}</div>`;
+        } else {
+            resultDiv.innerHTML = `<div class="result error">❌ FETCH FAILED\n\nResponse: ${JSON.stringify(data, null, 2)}\n\nNote: Check if database 'quiz_app' exists and has data</div>`;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `<div class="result error">❌ ERROR: ${error.message}\n\nPossible causes:\n- Database 'quiz_app' doesn't exist\n- Apache/MySQL not running\n- PHP error in backend</div>`;
+    }
+}
+
+async function testGetQuestions() {
+    const resultDiv = document.getElementById('student-result');
+    resultDiv.innerHTML = '<p>Fetching quiz questions...</p>';
+    
+    try {
+        const response = await fetch('api/quiz/get-questions.php?quiz_id=1');
+        const data = await response.json();
+        
+        if (data.success) {
+            resultDiv.innerHTML = `<div class="result success">✅ LOADED QUIZ\n\n${JSON.stringify(data, null, 2)}</div>`;
+        } else {
+            resultDiv.innerHTML = `<div class="result error">❌ FETCH FAILED\n\n${JSON.stringify(data, null, 2)}</div>`;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `<div class="result error">❌ ERROR: ${error.message}</div>`;
+    }
+}
+
+async function testSubmitQuiz() {
+    const resultDiv = document.getElementById('student-result');
+    resultDiv.innerHTML = '<p>Submitting quiz...</p>';
+    
+    try {
+        const response = await fetch('api/quiz/submit.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                student_id: 2,
+                quiz_id: 1,
+                answers: {"1": 2, "2": 1},
+                score: 2,
+                total_questions: 3,
+                violations: 0,
+                time_remaining: 120
+            })
+        });
+        const data = await response.json();
+        
+        if (data.success || data.message.includes('already submitted')) {
+            resultDiv.innerHTML = `<div class="result success">✅ SUBMIT RESPONSE\n\n${JSON.stringify(data, null, 2)}</div>`;
+        } else {
+            resultDiv.innerHTML = `<div class="result error">❌ SUBMIT FAILED\n\n${JSON.stringify(data, null, 2)}</div>`;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `<div class="result error">❌ ERROR: ${error.message}</div>`;
+    }
+}
+
+async function testGetResults() {
+    const resultDiv = document.getElementById('results-result');
+    resultDiv.innerHTML = '<p>Fetching results...</p>';
+    
+    try {
+        const response = await fetch('api/student/results.php?student_id=2');
+        const data = await response.json();
+        
+        if (data.success) {
+            resultDiv.innerHTML = `<div class="result success">✅ FOUND ${data.results.length} RESULTS\n\n${JSON.stringify(data, null, 2)}</div>`;
+        } else {
+            resultDiv.innerHTML = `<div class="result error">❌ FETCH FAILED\n\n${JSON.stringify(data, null, 2)}</div>`;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `<div class="result error">❌ ERROR: ${error.message}</div>`;
+    }
+}
+
+async function testReleaseResults() {
+    const resultDiv = document.getElementById('results-result');
+    resultDiv.innerHTML = '<p>Releasing results...</p>';
+    
+    try {
+        const response = await fetch('api/instructor/release-results.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                quiz_id: 1,
+                instructor_id: 1
+            })
+        });
+        const data = await response.json();
+        
+        if (data.success || data.message.includes('already released')) {
+            resultDiv.innerHTML = `<div class="result success">✅ RELEASE RESPONSE\n\n${JSON.stringify(data, null, 2)}</div>`;
+        } else {
+            resultDiv.innerHTML = `<div class="result error">❌ RELEASE FAILED\n\n${JSON.stringify(data, null, 2)}</div>`;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `<div class="result error">❌ ERROR: ${error.message}</div>`;
+    }
+}
+
+async function testGetNotifications() {
+    const resultDiv = document.getElementById('results-result');
+    resultDiv.innerHTML = '<p>Fetching notifications...</p>';
+    
+    try {
+        const response = await fetch('api/notifications/get.php?user_id=2');
+        const data = await response.json();
+        
+        if (data.success) {
+            resultDiv.innerHTML = `<div class="result success">✅ FOUND ${data.notifications.length} NOTIFICATIONS\n\n${JSON.stringify(data, null, 2)}</div>`;
+        } else {
+            resultDiv.innerHTML = `<div class="result error">❌ FETCH FAILED\n\n${JSON.stringify(data, null, 2)}</div>`;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = `<div class="result error">❌ ERROR: ${error.message}</div>`;
+    }
+}
+
+async function runAllTests() {
+    const resultDiv = document.getElementById('all-tests-result');
+    resultDiv.innerHTML = '<h3>Running all tests...</h3>';
+    
+    await testLogin();
+    await new Promise(r => setTimeout(r, 500));
+    
+    await testCreateQuiz();
+    await new Promise(r => setTimeout(r, 500));
+    
+    await testGetInstructorQuizzes();
+    await new Promise(r => setTimeout(r, 500));
+    
+    await testGetQuizzes();
+    await new Promise(r => setTimeout(r, 500));
+    
+    resultDiv.innerHTML += '<div class="result success">✅ ALL TESTS COMPLETED! Check results above.</div>';
+}
+
+checkStatus();
+</script>
+</body>
+</html>

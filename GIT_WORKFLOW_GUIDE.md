@@ -755,6 +755,13 @@ git config --global user.name "Name"       # Set username
 git config --global user.email "email"     # Set email
 git config --list                          # View config
 git clone <url>                            # Clone repository
+
+# Remove global username and email
+git config --global --unset user.name
+git config --global --unset user.email
+
+# Verify they're removed
+git config --global --list
 ```
 
 ### Basic Commands
