@@ -460,13 +460,13 @@ const NotificationsPage = () => {
                   width: isMobile ? '36px' : '40px',
                   height: isMobile ? '36px' : '40px',
                   borderRadius: '50%',
-                  backgroundColor: 'black',
+                  backgroundColor: theme.text,
                   border: 'none',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: 'white',
+                  color: theme.background,
                   fontSize: isMobile ? '16px' : '20px',
                   transition: 'transform 0.2s'
                 }}
@@ -610,10 +610,10 @@ const NotificationsPage = () => {
             gap: '16px'
           }}>
             <div>
-              <h1 style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: '700', color: '#1a1a1a', margin: 0 }}>
+              <h1 style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: '700', color: theme.text, margin: 0, fontFamily: 'var(--font-heading)', transition: 'color 0.3s ease' }}>
                 Notifications
               </h1>
-              <p style={{ fontSize: '14px', color: '#666', marginTop: '8px' }}>
+              <p style={{ fontSize: '14px', color: theme.textSecondary, marginTop: '8px', transition: 'color 0.3s ease' }}>
                 {unreadCount > 0 ? `You have ${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}` : 'All caught up! 🎉'}
               </p>
             </div>
@@ -624,7 +624,7 @@ const NotificationsPage = () => {
                   padding: '10px 20px',
                   borderRadius: '12px',
                   border: '2px solid #FF6B00',
-                  backgroundColor: 'white',
+                  backgroundColor: theme.card,
                   color: '#FF6B00',
                   cursor: 'pointer',
                   fontSize: '13px',
@@ -633,10 +633,10 @@ const NotificationsPage = () => {
                 }}
                 onMouseEnter={(e) => {
                   e.target.style.backgroundColor = '#FF6B00';
-                  e.target.style.color = 'white';
+                  e.target.style.color = theme.background;
                 }}
                 onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = 'white';
+                  e.target.style.backgroundColor = theme.card;
                   e.target.style.color = '#FF6B00';
                 }}
               >
@@ -648,17 +648,18 @@ const NotificationsPage = () => {
           {/* Notifications List */}
           {notifications.length === 0 ? (
             <div style={{
-              backgroundColor: 'white',
+              backgroundColor: theme.card,
               borderRadius: '18px',
               padding: '60px 40px',
               textAlign: 'center',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+              transition: 'background-color 0.3s ease'
             }}>
               <div style={{ fontSize: '64px', marginBottom: '16px' }}>📭</div>
-              <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#1a1a1a', margin: 0 }}>
+              <h3 style={{ fontSize: '20px', fontWeight: '700', color: theme.text, margin: 0, transition: 'color 0.3s ease' }}>
                 No Notifications
               </h3>
-              <p style={{ fontSize: '14px', color: '#666', marginTop: '8px' }}>
+              <p style={{ fontSize: '14px', color: theme.textSecondary, marginTop: '8px', transition: 'color 0.3s ease' }}>
                 You don't have any notifications yet.
               </p>
             </div>
@@ -668,11 +669,11 @@ const NotificationsPage = () => {
                 <div
                   key={notif.id}
                   style={{
-                    backgroundColor: notif.isRead ? 'white' : '#FFF8F0',
+                    backgroundColor: notif.isRead ? theme.card : '#FFF8F0',
                     borderRadius: '18px',
                     padding: isMobile ? '16px' : '20px 24px',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                    border: notif.isRead ? 'none' : '2px solid #FFD700',
+                    border: notif.isRead ? `1px solid ${theme.border}` : '2px solid #FFD700',
                     display: 'flex',
                     alignItems: 'flex-start',
                     gap: '16px',
@@ -706,8 +707,9 @@ const NotificationsPage = () => {
                       <h3 style={{
                         fontSize: '16px',
                         fontWeight: '700',
-                        color: '#1a1a1a',
-                        margin: 0
+                        color: theme.text,
+                        margin: 0,
+                        transition: 'color 0.3s ease'
                       }}>
                         {notif.title}
                         {!notif.isRead && (
@@ -726,7 +728,7 @@ const NotificationsPage = () => {
                         style={{
                           backgroundColor: 'transparent',
                           border: 'none',
-                          color: '#999',
+                          color: theme.textSecondary,
                           cursor: 'pointer',
                           fontSize: '18px',
                           padding: '0',
@@ -734,17 +736,18 @@ const NotificationsPage = () => {
                           transition: 'color 0.2s'
                         }}
                         onMouseEnter={(e) => e.target.style.color = '#DC2626'}
-                        onMouseLeave={(e) => e.target.style.color = '#999'}
+                        onMouseLeave={(e) => e.target.style.color = theme.textSecondary}
                       >
                         ×
                       </button>
                     </div>
                     <p style={{
                       fontSize: '14px',
-                      color: '#666',
+                      color: theme.textSecondary,
                       margin: 0,
                       marginBottom: '8px',
-                      lineHeight: '1.5'
+                      lineHeight: '1.5',
+                      transition: 'color 0.3s ease'
                     }}>
                       {notif.message}
                     </p>
@@ -755,7 +758,7 @@ const NotificationsPage = () => {
                     }}>
                       <span style={{
                         fontSize: '12px',
-                        color: '#999',
+                        color: theme.textSecondary,
                         fontWeight: '500'
                       }}>
                         {notif.time}

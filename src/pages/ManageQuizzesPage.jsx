@@ -148,8 +148,8 @@ export default function ManageQuizzesPage() {
 
   if (!user) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f5f5' }}>
-        <div style={{ fontSize: '18px', color: '#666' }}>Loading...</div>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: theme.background, transition: 'background-color 0.3s ease' }}>
+        <div style={{ fontSize: '18px', color: theme.textSecondary, transition: 'color 0.3s ease' }}>Loading...</div>
       </div>
     );
   }
@@ -212,7 +212,10 @@ export default function ManageQuizzesPage() {
 
           {/* Profile */}
           <button
-            onClick={() => setActiveMenu("profile")}
+            onClick={() => {
+              setActiveMenu("profile");
+              navigate("/student/profile");
+            }}
             style={{
               width: '100%',
               display: 'flex',
@@ -244,7 +247,10 @@ export default function ManageQuizzesPage() {
 
           {/* Manage Quizzes */}
           <button
-            onClick={() => setActiveMenu("manage-quizzes")}
+            onClick={() => {
+              setActiveMenu("manage-quizzes");
+              navigate("/student/manage-quizzes");
+            }}
             style={{
               width: '100%',
               display: 'flex',
@@ -277,7 +283,7 @@ export default function ManageQuizzesPage() {
           {/* My Result */}
           <button
             onClick={() => {
-              setActiveMenu("result");
+              setActiveMenu("results");
               navigate("/student/result");
             }}
             style={{
@@ -289,8 +295,8 @@ export default function ManageQuizzesPage() {
               marginBottom: '6px',
               borderRadius: '12px',
               border: 'none',
-              backgroundColor: activeMenu === "result" ? '#FF6B00' : 'transparent',
-              color: activeMenu === "result" ? 'white' : theme.sidebarText,
+              backgroundColor: activeMenu === "results" ? '#FF6B00' : 'transparent',
+              color: activeMenu === "results" ? 'white' : theme.sidebarText,
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
@@ -299,10 +305,10 @@ export default function ManageQuizzesPage() {
               transition: 'all 0.3s ease'
             }}
             onMouseEnter={(e) => {
-              if (activeMenu !== "result") e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5';
+              if (activeMenu !== "results") e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5';
             }}
             onMouseLeave={(e) => {
-              if (activeMenu !== "result") e.currentTarget.style.backgroundColor = 'transparent';
+              if (activeMenu !== "results") e.currentTarget.style.backgroundColor = 'transparent';
             }}
           >
             <span style={{ fontSize: '16px' }}>🏆</span>
@@ -311,7 +317,10 @@ export default function ManageQuizzesPage() {
 
           {/* Notification */}
           <button
-            onClick={() => setActiveMenu("notification")}
+            onClick={() => {
+              setActiveMenu("notifications");
+              navigate("/student/notifications");
+            }}
             style={{
               width: '100%',
               display: 'flex',
@@ -321,8 +330,8 @@ export default function ManageQuizzesPage() {
               marginBottom: '6px',
               borderRadius: '12px',
               border: 'none',
-              backgroundColor: activeMenu === "notification" ? '#FF6B00' : 'transparent',
-              color: activeMenu === "notification" ? 'white' : theme.sidebarText,
+              backgroundColor: activeMenu === "notifications" ? '#FF6B00' : 'transparent',
+              color: activeMenu === "notifications" ? 'white' : theme.sidebarText,
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: '600',
@@ -331,10 +340,10 @@ export default function ManageQuizzesPage() {
               transition: 'all 0.3s ease'
             }}
             onMouseEnter={(e) => {
-              if (activeMenu !== "notification") e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5';
+              if (activeMenu !== "notifications") e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5';
             }}
             onMouseLeave={(e) => {
-              if (activeMenu !== "notification") e.currentTarget.style.backgroundColor = 'transparent';
+              if (activeMenu !== "notifications") e.currentTarget.style.backgroundColor = 'transparent';
             }}
           >
             <span style={{ fontSize: '16px' }}>🔔</span>
@@ -425,13 +434,13 @@ export default function ManageQuizzesPage() {
                   width: isMobile ? '36px' : '40px',
                   height: isMobile ? '36px' : '40px',
                   borderRadius: '50%',
-                  backgroundColor: 'black',
+                  backgroundColor: theme.text,
                   border: 'none',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: 'white',
+                  color: theme.background,
                   fontSize: isMobile ? '16px' : '20px',
                   transition: 'transform 0.2s'
                 }}
@@ -568,12 +577,14 @@ export default function ManageQuizzesPage() {
                 fontSize: '42px',
                 fontWeight: '900',
                 fontStyle: 'italic',
-                color: 'black',
-                margin: '0 0 8px 0'
+                color: theme.text,
+                margin: '0 0 8px 0',
+                fontFamily: 'var(--font-heading)',
+                transition: 'color 0.3s ease'
               }}>
                 Manage Quizzes
               </h1>
-              <p style={{ fontSize: '16px', color: '#666', margin: 0 }}>
+              <p style={{ fontSize: '16px', color: theme.textSecondary, margin: 0, transition: 'color 0.3s ease' }}>
                 View your quizzes, track their status, and access quiz instructions.
               </p>
             </div>
@@ -587,7 +598,8 @@ export default function ManageQuizzesPage() {
                   display: 'flex',
                   gap: '32px',
                   marginBottom: '24px',
-                  borderBottom: '2px solid #e5e5e5'
+                  borderBottom: `2px solid ${theme.border}`,
+                  transition: 'border-color 0.3s ease'
                 }}>
                   <button
                     onClick={() => setActiveTab("available")}
@@ -596,11 +608,12 @@ export default function ManageQuizzesPage() {
                       border: 'none',
                       fontSize: '18px',
                       fontWeight: '700',
-                      color: activeTab === "available" ? 'black' : '#999',
+                      color: activeTab === "available" ? theme.text : theme.textSecondary,
                       cursor: 'pointer',
                       padding: '12px 0',
-                      borderBottom: activeTab === "available" ? '3px solid #FFD700' : '3px solid transparent',
-                      marginBottom: '-2px'
+                      borderBottom: activeTab === "available" ? `3px solid ${theme.text}` : '3px solid transparent',
+                      marginBottom: '-2px',
+                      transition: 'all 0.3s ease'
                     }}
                   >
                     Available Quizzes
@@ -612,11 +625,12 @@ export default function ManageQuizzesPage() {
                       border: 'none',
                       fontSize: '18px',
                       fontWeight: '700',
-                      color: activeTab === "submitted" ? 'black' : '#999',
+                      color: activeTab === "submitted" ? theme.text : theme.textSecondary,
                       cursor: 'pointer',
                       padding: '12px 0',
-                      borderBottom: activeTab === "submitted" ? '3px solid #FFD700' : '3px solid transparent',
-                      marginBottom: '-2px'
+                      borderBottom: activeTab === "submitted" ? `3px solid ${theme.text}` : '3px solid transparent',
+                      marginBottom: '-2px',
+                      transition: 'all 0.3s ease'
                     }}
                   >
                     Submitted Quizzes
@@ -629,11 +643,12 @@ export default function ManageQuizzesPage() {
                     <>
                       {availableQuizzes.map(quiz => (
                         <div key={quiz.id} style={{
-                          backgroundColor: 'white',
+                          backgroundColor: theme.card,
                           borderRadius: '18px',
                           padding: '28px',
                           boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-                          border: '1px solid #e5e5e5'
+                          border: `1px solid ${theme.border}`,
+                          transition: 'background-color 0.3s ease, border-color 0.3s ease'
                         }}>
                           <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
                             {/* Yellow Question Mark Icon */}
@@ -659,39 +674,43 @@ export default function ManageQuizzesPage() {
                               <h3 style={{
                                 fontSize: '22px',
                                 fontWeight: '700',
-                                color: 'black',
-                                margin: '0 0 8px 0'
+                                color: theme.text,
+                                margin: '0 0 8px 0',
+                                fontFamily: 'var(--font-heading)',
+                                transition: 'color 0.3s ease'
                               }}>
                                 {quiz.title}
                               </h3>
                               <p style={{
                                 fontSize: '14px',
-                                color: '#666',
+                                color: theme.textSecondary,
                                 margin: '0 0 16px 0',
-                                lineHeight: '1.4'
+                                lineHeight: '1.4',
+                                transition: 'color 0.3s ease'
                               }}>
                                 {quiz.description}
                               </p>
 
                               {/* Yellow Info Bar */}
                               <div style={{
-                                backgroundColor: '#FFF9E6',
+                                backgroundColor: darkMode ? '#3a3000' : '#FFF9E6',
                                 borderLeft: '4px solid #FFD700',
                                 padding: '16px 20px',
-                                marginBottom: '16px'
+                                marginBottom: '16px',
+                                transition: 'background-color 0.3s ease'
                               }}>
                                 <div style={{ marginBottom: '8px' }}>
-                                  <span style={{ fontSize: '14px', fontWeight: '600', color: 'black' }}>
+                                  <span style={{ fontSize: '14px', fontWeight: '600', color: theme.text, transition: 'color 0.3s ease' }}>
                                     Items: {quiz.items}
                                   </span>
                                 </div>
                                 <div style={{ marginBottom: '8px' }}>
-                                  <span style={{ fontSize: '14px', fontWeight: '600', color: 'black' }}>
+                                  <span style={{ fontSize: '14px', fontWeight: '600', color: theme.text, transition: 'color 0.3s ease' }}>
                                     Time Limit: {quiz.timeLimit}
                                   </span>
                                 </div>
                                 <div>
-                                  <span style={{ fontSize: '14px', fontWeight: '600', color: 'black' }}>
+                                  <span style={{ fontSize: '14px', fontWeight: '600', color: theme.text, transition: 'color 0.3s ease' }}>
                                     Due: <span style={{ color: '#DC2626' }}>{quiz.dueDate}</span>
                                   </span>
                                 </div>
@@ -699,14 +718,14 @@ export default function ManageQuizzesPage() {
 
                               {/* Attempts and Button */}
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontSize: '13px', color: '#666' }}>
+                                <span style={{ fontSize: '13px', color: theme.textSecondary, transition: 'color 0.3s ease' }}>
                                   Attempts Allowed: {quiz.attemptsAllowed}
                                 </span>
                                 <button
                                   onClick={() => handleAttemptQuiz(quiz.id)}
                                   style={{
-                                    backgroundColor: '#1a1a1a',
-                                    color: 'white',
+                                    backgroundColor: theme.text,
+                                    color: theme.background,
                                     padding: '10px 24px',
                                     borderRadius: '10px',
                                     border: 'none',
@@ -715,8 +734,8 @@ export default function ManageQuizzesPage() {
                                     cursor: 'pointer',
                                     transition: 'all 0.2s'
                                   }}
-                                  onMouseEnter={(e) => e.target.style.backgroundColor = '#333'}
-                                  onMouseLeave={(e) => e.target.style.backgroundColor = '#1a1a1a'}
+                                  onMouseEnter={(e) => e.target.style.backgroundColor = darkMode ? '#eee' : '#000'}
+                                  onMouseLeave={(e) => e.target.style.backgroundColor = theme.text}
                                 >
                                   Attempt Quiz
                                 </button>
@@ -730,11 +749,12 @@ export default function ManageQuizzesPage() {
                     <>
                       {submittedQuizzes.map(quiz => (
                         <div key={quiz.id} style={{
-                          backgroundColor: 'white',
+                          backgroundColor: theme.card,
                           borderRadius: '18px',
                           padding: '28px',
                           boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-                          border: '1px solid #e5e5e5'
+                          border: `1px solid ${theme.border}`,
+                          transition: 'background-color 0.3s ease, border-color 0.3s ease'
                         }}>
                           <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
                             {/* Yellow Question Mark Icon */}
@@ -760,8 +780,10 @@ export default function ManageQuizzesPage() {
                               <h3 style={{
                                 fontSize: '22px',
                                 fontWeight: '700',
-                                color: 'black',
-                                margin: '0 0 16px 0'
+                                color: theme.text,
+                                margin: '0 0 16px 0',
+                                fontFamily: 'var(--font-heading)',
+                                transition: 'color 0.3s ease'
                               }}>
                                 {quiz.title}
                               </h3>
@@ -775,19 +797,19 @@ export default function ManageQuizzesPage() {
                               }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                   <span style={{ fontSize: '16px' }}>⏱️</span>
-                                  <span style={{ fontSize: '14px', color: '#666' }}>
+                                  <span style={{ fontSize: '14px', color: theme.textSecondary, transition: 'color 0.3s ease' }}>
                                     Time Limit: {quiz.timeLimit}
                                   </span>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                   <span style={{ fontSize: '16px' }}>📝</span>
-                                  <span style={{ fontSize: '14px', color: '#666' }}>
+                                  <span style={{ fontSize: '14px', color: theme.textSecondary, transition: 'color 0.3s ease' }}>
                                     {quiz.items} items
                                   </span>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                   <span style={{ fontSize: '16px' }}>🔒</span>
-                                  <span style={{ fontSize: '14px', color: '#666' }}>
+                                  <span style={{ fontSize: '14px', color: theme.textSecondary, transition: 'color 0.3s ease' }}>
                                     1 attempt only
                                   </span>
                                 </div>
@@ -801,8 +823,8 @@ export default function ManageQuizzesPage() {
                                 <button
                                   onClick={() => handleViewResult(quiz.id)}
                                   style={{
-                                    backgroundColor: '#1a1a1a',
-                                    color: 'white',
+                                    backgroundColor: theme.text,
+                                    color: theme.background,
                                     padding: '10px 24px',
                                     borderRadius: '10px',
                                     border: 'none',
@@ -811,8 +833,8 @@ export default function ManageQuizzesPage() {
                                     cursor: 'pointer',
                                     transition: 'all 0.2s'
                                   }}
-                                  onMouseEnter={(e) => e.target.style.backgroundColor = '#333'}
-                                  onMouseLeave={(e) => e.target.style.backgroundColor = '#1a1a1a'}
+                                  onMouseEnter={(e) => e.target.style.backgroundColor = darkMode ? '#eee' : '#000'}
+                                  onMouseLeave={(e) => e.target.style.backgroundColor = theme.text}
                                 >
                                   View Result
                                 </button>
@@ -829,11 +851,11 @@ export default function ManageQuizzesPage() {
               {/* Right - Quiz Rules Panel */}
               <div style={{ width: '320px', flexShrink: 0 }}>
                 <div style={{
-                  backgroundColor: 'white',
+                  backgroundColor: theme.card,
                   borderRadius: '18px',
                   padding: '24px',
                   boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-                  border: '1px solid #e5e5e5',
+                  border: `1px solid ${theme.border}`,
                   position: 'sticky',
                   top: '20px'
                 }}>
@@ -859,8 +881,10 @@ export default function ManageQuizzesPage() {
                     <h3 style={{
                       fontSize: '20px',
                       fontWeight: '900',
-                      color: 'black',
-                      margin: 0
+                      color: theme.text,
+                      margin: 0,
+                      fontFamily: 'var(--font-heading)',
+                      transition: 'color 0.3s ease'
                     }}>
                       Quiz Rules
                     </h3>
@@ -872,9 +896,10 @@ export default function ManageQuizzesPage() {
                       <span style={{ fontSize: '16px', flexShrink: 0 }}>●</span>
                       <p style={{
                         fontSize: '14px',
-                        color: '#333',
+                        color: theme.textSecondary,
                         margin: 0,
-                        lineHeight: '1.5'
+                        lineHeight: '1.5',
+                        transition: 'color 0.3s ease'
                       }}>
                         Each quiz can only be taken once.
                       </p>
@@ -883,9 +908,10 @@ export default function ManageQuizzesPage() {
                       <span style={{ fontSize: '16px', flexShrink: 0 }}>●</span>
                       <p style={{
                         fontSize: '14px',
-                        color: '#333',
+                        color: theme.textSecondary,
                         margin: 0,
-                        lineHeight: '1.5'
+                        lineHeight: '1.5',
+                        transition: 'color 0.3s ease'
                       }}>
                         Leaving the quiz tab, minimizing the browser, or switching applications may be counted as a violation.
                       </p>
@@ -894,9 +920,10 @@ export default function ManageQuizzesPage() {
                       <span style={{ fontSize: '16px', flexShrink: 0 }}>●</span>
                       <p style={{
                         fontSize: '14px',
-                        color: '#333',
+                        color: theme.textSecondary,
                         margin: 0,
-                        lineHeight: '1.5'
+                        lineHeight: '1.5',
+                        transition: 'color 0.3s ease'
                       }}>
                         Maximum of three (3) violations will auto-submit the quiz.
                       </p>
@@ -905,9 +932,10 @@ export default function ManageQuizzesPage() {
                       <span style={{ fontSize: '16px', flexShrink: 0 }}>●</span>
                       <p style={{
                         fontSize: '14px',
-                        color: '#333',
+                        color: theme.textSecondary,
                         margin: 0,
-                        lineHeight: '1.5'
+                        lineHeight: '1.5',
+                        transition: 'color 0.3s ease'
                       }}>
                         If the time runs out, the quiz will be automatically submitted.
                       </p>
@@ -916,9 +944,10 @@ export default function ManageQuizzesPage() {
                       <span style={{ fontSize: '16px', flexShrink: 0 }}>●</span>
                       <p style={{
                         fontSize: '14px',
-                        color: '#333',
+                        color: theme.textSecondary,
                         margin: 0,
-                        lineHeight: '1.5'
+                        lineHeight: '1.5',
+                        transition: 'color 0.3s ease'
                       }}>
                         Once submitted, answers are final and cannot be changed.
                       </p>
@@ -940,13 +969,14 @@ export default function ManageQuizzesPage() {
                   <div style={{
                     marginTop: '20px',
                     padding: '16px',
-                    backgroundColor: '#FFF9E6',
+                    backgroundColor: darkMode ? '#3a3000' : '#FFF9E6',
                     borderRadius: '12px',
-                    border: '1px solid #FFD700'
+                    border: '1px solid #FFD700',
+                    transition: 'background-color 0.3s ease'
                   }}>
                     <p style={{
                       fontSize: '12px',
-                      color: '#666',
+                      color: theme.textSecondary,
                       margin: 0,
                       fontStyle: 'italic',
                       textAlign: 'center'
