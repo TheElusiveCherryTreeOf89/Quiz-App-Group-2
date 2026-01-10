@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { fetchWithAuth } from "../utils/api";
 
 export default function RegistrationPage() {
   const navigate = useNavigate();
@@ -15,83 +16,57 @@ export default function RegistrationPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setSuccess("");
-
-    // Validation
+    // Basic validation
     if (!formData.name || !formData.name.trim()) {
       setError("Name is required");
       return;
     }
-
-    if (formData.name.trim().length < 2) {
-      setError("Name must be at least 2 characters");
+    if (!formData.email || !formData.email.trim() || !formData.email.includes("@")) {
+      setError("A valid email is required");
       return;
     }
-
-    if (!formData.email || !formData.email.trim()) {
-      setError("Email is required");
-      return;
-    }
-
-    if (!formData.email.includes("@") || !formData.email.includes(".")) {
-      setError("Please enter a valid email address");
-      return;
-    }
-
-    if (!formData.password || !formData.password.trim()) {
-      setError("Password is required");
-      return;
-    }
-
-    if (formData.password.length < 6) {
+    if (!formData.password || formData.password.length < 6) {
       setError("Password must be at least 6 characters");
       return;
     }
-
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match");
       return;
     }
 
+    const payload = {
+      name: formData.name.trim(),
+      email: formData.email.trim(),
+      password: formData.password,
+      role: "student",
+      lastName: (formData.lastName || "").trim(),
+      studentNumber: (formData.studentNumber || "").trim(),
+      program: (formData.program || "").trim()
+    };
+
     setLoading(true);
-
-    // Simulate brief loading
-    setTimeout(() => {
-      try {
-        const existingUsers = JSON.parse(localStorage.getItem("registeredUsers") || "[]");
-        
-        // Check if user already exists
-        const normalizedEmail = formData.email.trim().toLowerCase();
-        if (existingUsers.some(user => user.email.toLowerCase() === normalizedEmail)) {
-          setError("User with this email already exists");
-          setLoading(false);
-          return;
-        }
-
-        // Add new user
-        existingUsers.push({
-          name: formData.name.trim(),
-          email: normalizedEmail,
-          password: formData.password,
-          role: "student",
-          createdAt: new Date().toISOString()
-        });
-
-        localStorage.setItem("registeredUsers", JSON.stringify(existingUsers));
+    try {
+      const resp = await fetchWithAuth('/api/auth/register.php', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      const data = resp && resp.json ? await resp.json() : null;
+      if (resp && resp.ok && data && data.success) {
         setSuccess("Registration successful! Redirecting to login...");
-        setLoading(false);
-        
-        setTimeout(() => {
-          navigate("/login");
-        }, 1500);
-      } catch (err) {
-        setError("Registration failed. Please try again.");
-        setLoading(false);
+        setTimeout(() => navigate('/login'), 1500);
+      } else {
+        setError((data && data.message) ? data.message : 'Registration failed. Please try again.');
       }
-    }, 500);
+    } catch (err) {
+      console.error('Registration error:', err);
+      setError('Registration failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleChange = (e) => {

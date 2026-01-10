@@ -1,0 +1,42 @@
+[
+  {
+    "question": "Which sorting algorithm has the best worst-case time complexity?",
+    "options": ["Bubble Sort", "Quick Sort", "Merge Sort", "Insertion Sort"],
+    "correctAnswer": "Merge Sort",
+    "points": 1
+  },
+  {
+    "question": "What does HTTP stand for in web development?",
+    "options": [
+      "HyperText Transfer Protocol",
+      "High Transfer Text Procedure",
+      "Hyper Transfer Text Protocol",
+      "HyperText Transmission Process"
+    ],
+    "correctAnswer": "HyperText Transfer Protocol",
+    "points": 1
+  },
+  {
+    "question": "Which data structure is typically used for implementing a breadth-first search?",
+    "options": ["Stack", "Queue", "Array", "Linked List"],
+    "correctAnswer": "Queue",
+    "points": 1
+  },
+  {
+    "question": "What is the main advantage of using a hash table?",
+    "options": [
+      "Guaranteed sorted order",
+      "Constant time average case lookup",
+      "Minimal memory usage",
+      "Easy traversal"
+    ],
+    "correctAnswer": "Constant time average case lookup",
+    "points": 1
+  },
+  {
+    "question": "In React, what hook is used to manage state in functional components?",
+    "options": ["useEffect", "useState", "useContext", "useReducer"],
+    "correctAnswer": "useState",
+    "points": 1
+  }
+]

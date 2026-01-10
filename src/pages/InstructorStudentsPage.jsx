@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToastContext } from "../App";
+import { fetchWithAuth, getAuthToken, getAuthTokenAsync } from "../utils/api";
+import { setMeta, removeCurrentUser, removeToken, getCurrentUser, getMeta } from "../utils/db";
 import logo from "../assets/1.svg";
 
 export default function InstructorStudentsPage() {
@@ -20,6 +22,10 @@ export default function InstructorStudentsPage() {
   const [notifications, setNotifications] = useState([]);
   const [user, setUser] = useState(null);
   const [pageLoaded, setPageLoaded] = useState(false);
+  const [debugAttempts, setDebugAttempts] = useState([]);
+  const [assignEmails, setAssignEmails] = useState('');
+  const [assignLoading, setAssignLoading] = useState(false);
+  const [assignResult, setAssignResult] = useState(null);
 
   // Handle window resize for mobile responsiveness
   useEffect(() => {
@@ -33,65 +39,180 @@ export default function InstructorStudentsPage() {
   }, []);
 
   useEffect(() => {
-    try {
-      const user = JSON.parse(localStorage.getItem("currentUser") || "null");
-      if (!user || user.role !== "instructor") {
-        navigate("/instructor/login");
-        return;
-      }
+    const loadStudentsData = async () => {
+      try {
+        const user = await getCurrentUser();
+        if (!user || user.role !== "instructor") {
+          navigate("/instructor/login");
+          return;
+        }
+        setUser(user);
 
-      // Get all registered students from localStorage
-      const registeredUsers = JSON.parse(localStorage.getItem("registeredUsers") || "[]");
-      const studentUsers = registeredUsers.filter(u => u.role === "student");
-      
-      // Get quiz results to calculate stats
-      const results = JSON.parse(localStorage.getItem("quizResults") || "[]");
-      
-      // Build student list with stats
-      const studentsList = studentUsers.map(student => {
-        const studentResults = results.filter(r => r.studentEmail === student.email);
-        const quizzesTaken = studentResults.length;
-        const totalScore = studentResults.reduce((sum, r) => sum + (r.score / r.totalQuestions * 100), 0);
-        const averageScore = quizzesTaken > 0 ? totalScore / quizzesTaken : 0;
-        
-        // Find last activity
-        const lastActivity = studentResults.length > 0
-          ? studentResults.reduce((latest, r) => 
-              new Date(r.submittedAt) > new Date(latest) ? r.submittedAt : latest,
-              studentResults[0].submittedAt
-            )
-          : new Date().toISOString();
-        
-        return {
-          name: student.name,
-          email: student.email,
-          studentId: student.studentId || "N/A",
-          quizzesTaken,
-          totalScore,
-          averageScore,
-          lastActivity
+        // Check token before calling API (fast localStorage path, fallback to IndexedDB)
+        const token = getAuthToken() || await getAuthTokenAsync();
+        if (!token) {
+          console.warn('[InstructorStudentsPage] No auth token found, redirecting to login');
+          navigate('/instructor/login');
+          return;
+        }
+
+        // Load students from API and normalize the response to an array
+        const tryFetchStudents = async (body) => {
+          console.debug('[InstructorStudentsPage] sending students fetch body:', body);
+          const resp = await fetchWithAuth('/api/instructor/students.php', body ? { method: 'POST', body: JSON.stringify(body) } : undefined);
+          // attempt to read parsed `data` first, then fallback to text
+          let parsed = resp.data ?? null;
+          if (!parsed) {
+            const txt = await resp.text().catch(() => '');
+            try { parsed = txt ? JSON.parse(txt) : null; } catch (e) { parsed = txt; }
+          }
+          return { resp, parsed };
         };
-      });
 
-      setStudents(studentsList);
-      
-      // Load notifications
-      const savedNotifications = JSON.parse(localStorage.getItem("instructorNotifications") || "[]");
-      setNotifications(savedNotifications);
-      
-      // Load dark mode preference
-      const savedDarkMode = localStorage.getItem("darkMode") === "true";
-      setDarkMode(savedDarkMode);
-      
-      setUser(user);
-      
-      setTimeout(() => setPageLoaded(true), 50);
-    } catch (error) {
-    }
+        // Try several candidate request shapes until we get students
+        const extractArray = (data) => {
+          if (!data) return [];
+          if (Array.isArray(data)) return data;
+          if (Array.isArray(data.students)) return data.students;
+          if (Array.isArray(data.data)) return data.data;
+          if (Array.isArray(data.items)) return data.items;
+          if (Array.isArray(data.users)) return data.users;
+          return [];
+        };
+
+        const candidates = [
+          { instructor_id: user.id },
+          { instructorId: user.id },
+          user.email ? { instructor_email: user.email } : null,
+          user.email ? { instructorEmail: user.email } : null,
+          // combined body
+          user.email ? { instructor_id: user.id, instructor_email: user.email } : null,
+        ].filter(Boolean);
+
+        let studentsArray = [];
+        let lastResult = null;
+        for (const body of candidates) {
+          lastResult = await tryFetchStudents(body);
+          console.debug('[InstructorStudentsPage] attempt result', body, lastResult.resp.status, lastResult.parsed);
+          studentsArray = extractArray(lastResult.parsed);
+          if (studentsArray.length > 0) break;
+        }
+
+        // Final fallback: try GET (some backends expose students on GET)
+        if (studentsArray.length === 0) {
+          // collect attempts for debugging visibility
+          const probes = [];
+          try {
+            const getResp = await fetchWithAuth('/api/instructor/students.php');
+            const parsedGet = getResp.data ?? (await getResp.json().catch(() => null));
+            probes.push({ url: '/api/instructor/students.php', method: 'GET', body: null, status: getResp.status, parsed: parsedGet });
+            console.debug('[InstructorStudentsPage] GET students status', getResp.status, parsedGet);
+            studentsArray = extractArray(parsedGet);
+            lastResult = { resp: getResp, parsed: parsedGet };
+          } catch (e) {
+            console.warn('[InstructorStudentsPage] GET students fallback failed', e);
+          }
+
+          // Additional probes: GET with query params and alternative endpoints
+          const queryVariants = [
+            `/api/instructor/students.php?instructor_id=${user.id}`,
+            `/api/instructor/students.php?instructorId=${user.id}`,
+            user.email ? `/api/instructor/students.php?instructor_email=${encodeURIComponent(user.email)}` : null,
+            user.email ? `/api/instructor/students.php?instructorEmail=${encodeURIComponent(user.email)}` : null,
+            `/api/students.php`,
+          ].filter(Boolean);
+
+          for (const q of queryVariants) {
+            try {
+              const r = await fetchWithAuth(q);
+              const p = r.data ?? (await r.json().catch(() => null));
+              probes.push({ url: q, method: 'GET', body: null, status: r.status, parsed: p });
+              if (studentsArray.length === 0) studentsArray = extractArray(p);
+            } catch (err) {
+              probes.push({ url: q, method: 'GET', body: null, status: 'error', parsed: String(err) });
+            }
+            if (studentsArray.length > 0) break;
+          }
+
+          // Try POST variants against /api/instructor/students.php and /api/students.php
+          const postVariants = [
+            { url: '/api/instructor/students.php', body: { instructor_id: user.id } },
+            { url: '/api/instructor/students.php', body: { instructorId: user.id } },
+            user.email ? { url: '/api/instructor/students.php', body: { instructor_email: user.email } } : null,
+            user.email ? { url: '/api/instructor/students.php', body: { instructorEmail: user.email } } : null,
+            { url: '/api/students.php', body: { instructor_id: user.id } },
+          ].filter(Boolean);
+
+          for (const pv of postVariants) {
+            try {
+              const r = await fetchWithAuth(pv.url, { method: 'POST', body: JSON.stringify(pv.body) });
+              const p = r.data ?? (await r.json().catch(() => null));
+              probes.push({ url: pv.url, method: 'POST', body: pv.body, status: r.status, parsed: p });
+              if (studentsArray.length === 0) studentsArray = extractArray(p);
+            } catch (err) {
+              probes.push({ url: pv.url, method: 'POST', body: pv.body, status: 'error', parsed: String(err) });
+            }
+            if (studentsArray.length > 0) break;
+          }
+
+          setDebugAttempts(probes);
+        }
+
+        if ((!lastResult || !lastResult.resp.ok) && studentsArray.length === 0) {
+          const status = lastResult && lastResult.resp ? lastResult.resp.status : 'unknown';
+          const message = lastResult && lastResult.parsed && lastResult.parsed.message ? lastResult.parsed.message : `Failed to load students (status ${status})`;
+          console.warn('[InstructorStudentsPage] Failed to load students:', message);
+        }
+
+        // Final fallback: if API returned no students, try reading demo/users from IndexedDB meta
+        if ((!studentsArray || studentsArray.length === 0)) {
+          try {
+            const rawUsers = await getMeta('users').catch(()=>null);
+            const metaUsers = rawUsers ? JSON.parse(rawUsers) : null;
+            if (Array.isArray(metaUsers) && metaUsers.length > 0) {
+              const onlyStudents = metaUsers.filter(u => !u.role || u.role === 'student');
+              if (onlyStudents.length > 0) {
+                setStudents(onlyStudents);
+              } else {
+                setStudents(studentsArray);
+              }
+            } else {
+              setStudents(studentsArray);
+            }
+          } catch (e) {
+            setStudents(studentsArray);
+          }
+        } else {
+          setStudents(studentsArray);
+        }
+        if (!studentsArray || studentsArray.length === 0) console.info('[InstructorStudentsPage] No students found; debugAttempts available in UI');
+
+        // Load notifications from IndexedDB meta
+        const rawNotifications = await getMeta('instructorNotifications').catch(()=>null);
+        const savedNotifications = rawNotifications ? JSON.parse(rawNotifications) : [];
+        setNotifications(savedNotifications);
+
+        // Load dark mode preference
+        const rawDark = await getMeta('darkMode').catch(()=>null);
+        const savedDarkMode = rawDark === 'true';
+        setDarkMode(savedDarkMode);
+
+        setUser(user);
+
+        setTimeout(() => setPageLoaded(true), 50);
+      } catch (error) {
+        console.error('Load students error:', error);
+        navigate("/instructor/login");
+      }
+    };
+
+    loadStudentsData();
   }, [navigate]);
 
   const handleLogout = () => {
-    localStorage.removeItem("currentUser");
+    // Clear session from IndexedDB
+    removeCurrentUser().catch(() => {});
+    removeToken().catch(() => {});
     navigate("/instructor/login");
   };
 
@@ -108,19 +229,19 @@ export default function InstructorStudentsPage() {
   const toggleDarkMode = () => {
     const newMode = !darkMode;
     setDarkMode(newMode);
-    localStorage.setItem("darkMode", newMode.toString());
+    setMeta('darkMode', newMode.toString()).catch(() => {});
     showToast(`Dark mode ${newMode ? 'enabled' : 'disabled'}`, "info");
   };
 
   const markNotificationAsRead = (id) => {
     const updated = notifications.map(n => n.id === id ? { ...n, read: true } : n);
     setNotifications(updated);
-    localStorage.setItem("instructorNotifications", JSON.stringify(updated));
+    setMeta('instructorNotifications', JSON.stringify(updated)).catch(() => {});
   };
 
   const clearAllNotifications = () => {
     setNotifications([]);
-    localStorage.setItem("instructorNotifications", "[]");
+    setMeta('instructorNotifications', JSON.stringify([])).catch(() => {});
     showToast("All notifications cleared", "success");
     setShowNotifications(false);
   };
@@ -768,6 +889,58 @@ export default function InstructorStudentsPage() {
                 <p style={{ fontSize: '14px', color: theme.textSecondary, margin: 0, transition: 'color 0.3s ease' }}>
                   {searchTerm ? 'Try adjusting your search criteria' : 'Students will appear here after taking quizzes'}
                 </p>
+                {debugAttempts && debugAttempts.length > 0 && (
+                  <div style={{ marginTop: '18px', textAlign: 'left' }}>
+                    <h4 style={{ fontSize: '13px', color: theme.textSecondary, marginBottom: '8px' }}>Debug attempts</h4>
+                    <div style={{ maxHeight: '260px', overflow: 'auto', background: darkMode ? '#111' : '#f8f8f8', padding: '12px', borderRadius: '8px', border: `1px solid ${theme.border}` }}>
+                      {debugAttempts.map((a, i) => (
+                        <div key={i} style={{ marginBottom: '10px', fontSize: '12px', color: theme.text }}>
+                          <div style={{ fontWeight: '700' }}>{a.method} {a.url} — {a.status}</div>
+                          {a.body && <div style={{ fontSize: '12px', color: theme.textSecondary, marginTop: '4px' }}>Body: {JSON.stringify(a.body)}</div>}
+                          <div style={{ marginTop: '6px', fontSize: '12px', color: '#444' }}>{typeof a.parsed === 'string' ? a.parsed : JSON.stringify(a.parsed)}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <p style={{ fontSize: '12px', color: theme.textSecondary, marginTop: '8px' }}>If the backend returns an empty array, ensure students are associated with this instructor (id/email) in the database.</p>
+                  
+                    <div style={{ marginTop: '12px' }}>
+                      <label style={{ display: 'block', fontSize: '13px', color: theme.textSecondary, marginBottom: '6px' }}>Assign students by email (comma or newline separated)</label>
+                      <textarea
+                        value={assignEmails}
+                        onChange={(e) => setAssignEmails(e.target.value)}
+                        rows={3}
+                        placeholder="student1@example.com, student2@example.com"
+                        style={{ width: '100%', padding: '8px', borderRadius: '8px', border: `1px solid ${theme.border}`, background: theme.card, color: theme.text }}
+                      />
+                      <div style={{ marginTop: '8px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <button
+                          onClick={async () => {
+                            const emails = assignEmails.split(/[,\n\r]+/).map(s => s.trim()).filter(Boolean);
+                            if (emails.length === 0) return setAssignResult({ success: false, message: 'No emails provided' });
+                            setAssignLoading(true);
+                            try {
+                              const instructorId = user?.id || null;
+                              const resp = await fetchWithAuth('/api/instructor/assign-students.php', { method: 'POST', body: JSON.stringify({ instructor_id: instructorId, emails }) });
+                              const parsed = resp.data ?? (await resp.json().catch(() => null));
+                              setAssignResult(parsed);
+                              // refresh page to reload students
+                              setTimeout(() => window.location.reload(), 800);
+                            } catch (err) {
+                              setAssignResult({ success: false, message: String(err) });
+                            } finally { setAssignLoading(false); }
+                          }}
+                          disabled={assignLoading}
+                          style={{ padding: '8px 12px', borderRadius: '8px', background: '#2563EB', color: 'white', border: 'none', cursor: 'pointer' }}
+                        >
+                          {assignLoading ? 'Assigning…' : 'Assign Emails'}
+                        </button>
+                        {assignResult && (
+                          <div style={{ fontSize: '13px', color: assignResult.success ? '#16A34A' : '#DC2626' }}>{assignResult.success ? `Updated ${assignResult.updated || 0}` : assignResult.message}</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               filteredStudents.map((student, index) => (

@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuizStore } from "../../store/quizStore";
+import { fetchWithAuth } from "../../utils/api";
+import { getMeta, setMeta, getCurrentUser } from "../../utils/db";
 import QuestionCard from "./QuestionCard";
 import ViolationModal from "./ViolationModal";
 import SubmitConfirmModal from "./SubmitConfirmModal";
@@ -31,6 +33,12 @@ export default function QuizPage() {
     resetQuiz,
   } = useQuizStore();
 
+  const setQuestions = useQuizStore(state => state.setQuestions);
+
+  const currentQuestion = questions[currentQuestionIndex];
+
+  const timerRef = useRef(null);
+
   // Handle window resize for responsive design
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -38,40 +46,107 @@ export default function QuizPage() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Load saved progress from localStorage
+  // Load user
   useEffect(() => {
-    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
-    if (!currentUser || currentUser.role !== "student") {
-      navigate("/login");
-      return;
-    }
-    setUser(currentUser);
+    (async () => {
+      const currentUser = await getCurrentUser().catch(() => null);
+      if (!currentUser || currentUser.role !== "student") {
+        navigate("/login");
+        return;
+      }
+      setUser(currentUser);
+    })();
+  }, [navigate]);
 
-    const completedQuizzes = JSON.parse(localStorage.getItem("completedQuizzes") || "{}");
-    if (completedQuizzes[currentUser.email]) {
-      navigate("/student/result-pending");
-      return;
-    }
+  // Load quiz and progress
+  useEffect(() => {
+    if (!user) return;
 
-    // Load saved progress
-    const savedProgress = localStorage.getItem(`quizProgress_${currentUser.email}`);
-    if (savedProgress) {
-      const { questionIndex, flagged } = JSON.parse(savedProgress);
-      setCurrentQuestionIndex(questionIndex || 0);
-      setFlaggedQuestions(new Set(flagged || []));
-    } else {
-      resetQuiz();
-    }
-  }, [navigate, resetQuiz]);
+    (async () => {
+      try {
+        // If a quiz id is provided in the URL, try to load that quiz from API
+        const params = new URLSearchParams(window.location.search);
+        const quizId = params.get('id');
 
-  // Save progress to localStorage whenever answers or current question changes
+        if (quizId) {
+          try {
+            const resp = await fetchWithAuth('/api/quizzes/available.php');
+            const data = resp.data ?? (await resp.json().catch(() => null));
+            const quizzes = Array.isArray(data) ? data : (data?.quizzes || data?.data || []);
+            const found = quizzes.find(q => q.id === quizId || q._id === quizId || q.quiz_id === quizId || String(q.id) === String(quizId));
+            if (found && Array.isArray(found.questions)) {
+              // Ensure questions have ids
+              const questionsWithIds = (found.questions || []).map((q, idx) => ({
+                ...q,
+                id: q.id || `q_${idx + 1}`
+              }));
+              setQuestions(questionsWithIds);
+              // store current quiz id so submissions include quiz reference
+              try { useQuizStore.getState().setQuizId(found.id ?? found._id ?? found.quiz_id ?? found.id); } catch (e) { /* noop */ }
+            } else {
+              // fallback to reset if not found
+              resetQuiz();
+            }
+          } catch (err) {
+            console.warn('[QuizPage] failed to load quiz by id, falling back to local questions', err);
+            resetQuiz();
+          }
+        } else {
+          // No quiz id - load the first available published quiz
+          try {
+            const resp = await fetchWithAuth('/api/quizzes/available.php');
+            const data = resp.data ?? (await resp.json().catch(() => null));
+            const quizzes = Array.isArray(data) ? data : (data?.quizzes || data?.data || []);
+            if (quizzes.length > 0) {
+              const quiz = quizzes[0];
+              // Ensure questions have ids
+              const questionsWithIds = (quiz.questions || []).map((q, idx) => ({
+                ...q,
+                id: q.id || `q_${idx + 1}`
+              }));
+              setQuestions(questionsWithIds);
+              // store current quiz id so submissions include quiz reference
+              try { useQuizStore.getState().setQuizId(quiz.id ?? quiz._id ?? quiz.quiz_id ?? quiz.id); } catch (e) { /* noop */ }
+              // load saved progress if any
+              try {
+                const savedProgress = await getMeta(`quizProgress_${user.email}`);
+                if (savedProgress) {
+                  const { questionIndex, flagged } = savedProgress;
+                  setCurrentQuestionIndex(questionIndex || 0);
+                  setFlaggedQuestions(new Set(flagged || []));
+                }
+              } catch (e) {
+                console.warn('Failed to load saved progress from IndexedDB', e);
+              }
+            } else {
+              resetQuiz();
+            }
+          } catch (err) {
+            console.warn('[QuizPage] failed to load available quizzes, falling back to demo', err);
+            resetQuiz();
+          }
+        }
+      } catch (err) {
+        console.warn('[QuizPage] unexpected error:', err);
+        resetQuiz();
+      }
+    })();
+  }, [user, navigate, resetQuiz]);
+
+  // Save progress to IndexedDB meta whenever answers or current question changes
   useEffect(() => {
     if (user && !isSubmitted) {
       const progress = {
         questionIndex: currentQuestionIndex,
         flagged: Array.from(flaggedQuestions)
       };
-      localStorage.setItem(`quizProgress_${user.email}`, JSON.stringify(progress));
+      (async () => {
+        try {
+          await setMeta(`quizProgress_${user.email}`, progress);
+        } catch (e) {
+          console.warn('Failed to save progress to IndexedDB', e);
+        }
+      })();
     }
   }, [currentQuestionIndex, flaggedQuestions, user, isSubmitted]);
 
@@ -91,82 +166,68 @@ export default function QuizPage() {
 
   // Timer countdown
   useEffect(() => {
-    if (timeLeft <= 0 && !isSubmitted && user) {
-      setShowTimeUpModal(true);
-      submitQuiz(user.email, user.name);
+    if (isSubmitted || !user) {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
       return;
     }
 
-    if (isSubmitted || !user) return;
-
-    const timer = setInterval(() => {
-      decreaseTime();
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [timeLeft, isSubmitted, decreaseTime, user]);
-
-  // Tab switch detection
-  useEffect(() => {
-    if (isSubmitted || !user) return;
-
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        addViolation();
-      }
-    };
-
-    const handleBlur = () => {
-      addViolation();
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("blur", handleBlur);
+    if (!timerRef.current) {
+      timerRef.current = setInterval(() => {
+        decreaseTime();
+      }, 1000);
+    }
 
     return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("blur", handleBlur);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
     };
-  }, [addViolation, isSubmitted, user]);
+  }, [isSubmitted, user, decreaseTime]);
+
+  // Handle time up
+  useEffect(() => {
+    if (timeLeft <= 0 && !isSubmitted && user) {
+      setShowTimeUpModal(true);
+      submitQuiz(user);
+    }
+  }, [timeLeft, isSubmitted, user, submitQuiz]);
+
+  // Tab switch detection - disabled to prevent glitching
+  // useEffect(() => {
+  //   if (isSubmitted || !user) return;
+
+  //   const handleVisibilityChange = () => {
+  //     if (document.hidden) {
+  //       addViolation();
+  //     }
+  //   };
+
+  //   const handleBlur = () => {
+  //     addViolation();
+  //   };
+
+  //   document.addEventListener("visibilitychange", handleVisibilityChange);
+  //   window.addEventListener("blur", handleBlur);
+
+  //   return () => {
+  //     document.removeEventListener("visibilitychange", handleVisibilityChange);
+  //     window.removeEventListener("blur", handleBlur);
+  //   };
+  // }, [addViolation, isSubmitted, user]);
 
   // Check for auto-submit on 3 violations
   useEffect(() => {
     if (violations >= 3 && !isSubmitted && user) {
       setShowMaxViolationsModal(true);
-      submitQuiz(user.email, user.name);
+      submitQuiz(user);
     }
   }, [violations, isSubmitted, submitQuiz, user]);
 
-  // Keyboard navigation
-  useEffect(() => {
-    if (isSubmitted || !user) return;
-
-    const handleKeyPress = (e) => {
-      // Arrow keys for navigation
-      if (e.key === 'ArrowRight' && currentQuestionIndex < questions.length - 1) {
-        setCurrentQuestionIndex(currentQuestionIndex + 1);
-      } else if (e.key === 'ArrowLeft' && currentQuestionIndex > 0) {
-        setCurrentQuestionIndex(currentQuestionIndex - 1);
-      }
-      // Number keys 1-4 for answer selection
-      else if (['1', '2', '3', '4'].includes(e.key) && currentQuestion) {
-        const optionIndex = parseInt(e.key) - 1;
-        if (currentQuestion.options[optionIndex]) {
-          const { saveAnswer } = useQuizStore.getState();
-          saveAnswer(currentQuestion.id, currentQuestion.options[optionIndex]);
-        }
-      }
-      // F key to flag/unflag question
-      else if (e.key === 'f' || e.key === 'F') {
-        toggleFlag(currentQuestion.id);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [currentQuestionIndex, questions.length, isSubmitted, user, currentQuestion]);
-
-  const toggleFlag = (questionId) => {
+  const toggleFlag = useCallback((questionId) => {
     setFlaggedQuestions(prev => {
       const newSet = new Set(prev);
       if (newSet.has(questionId)) {
@@ -176,33 +237,47 @@ export default function QuizPage() {
       }
       return newSet;
     });
-  };
+  }, []);
+
+  // Keyboard navigation
+  const handleKeyPress = useCallback((e) => {
+    // Arrow keys for navigation
+    if (e.key === 'ArrowRight' && currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+    } else if (e.key === 'ArrowLeft' && currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(currentQuestionIndex - 1);
+    }
+    // Number keys 1-4 for answer selection
+    else if (['1', '2', '3', '4'].includes(e.key)) {
+      const currentQ = questions[currentQuestionIndex];
+      if (currentQ && currentQ.options && currentQ.options[parseInt(e.key) - 1]) {
+        const { saveAnswer } = useQuizStore.getState();
+        saveAnswer(currentQ.id, currentQ.options[parseInt(e.key) - 1]);
+      }
+    }
+    // F key to flag/unflag question
+    else if (e.key === 'f' || e.key === 'F') {
+      const currentQ = questions[currentQuestionIndex];
+      if (currentQ) {
+        toggleFlag(currentQ.id);
+      }
+    }
+  }, [currentQuestionIndex, questions, toggleFlag]);
+
+  useEffect(() => {
+    if (isSubmitted || !user) return;
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [isSubmitted, user, handleKeyPress]);
 
   const handleConfirmSubmit = () => {
     setShowSubmitConfirm(false);
-    submitQuiz(user.email, user.name);
-    
-    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
-    if (currentUser) {
-      const completedQuizzes = JSON.parse(localStorage.getItem("completedQuizzes") || "{}");
-      completedQuizzes[currentUser.email] = true;
-      localStorage.setItem("completedQuizzes", JSON.stringify(completedQuizzes));
-      // Clear quiz progress from localStorage
-      localStorage.removeItem(`quizProgress_${currentUser.email}`);
-    }
-    
+    submitQuiz(user);
     navigate("/student/result-pending");
   };
 
   const handleViewStatus = () => {
-    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
-    if (currentUser) {
-      const completedQuizzes = JSON.parse(localStorage.getItem("completedQuizzes") || "{}");
-      completedQuizzes[currentUser.email] = true;
-      localStorage.setItem("completedQuizzes", JSON.stringify(completedQuizzes));
-      // Clear quiz progress from localStorage
-      localStorage.removeItem(`quizProgress_${currentUser.email}`);
-    }
     navigate("/student/result-pending");
   };
 
@@ -226,7 +301,6 @@ export default function QuizPage() {
   };
 
   const isLastQuestion = currentQuestionIndex === questions.length - 1;
-  const currentQuestion = questions[currentQuestionIndex];
 
   if (!user) {
     return (
@@ -389,7 +463,7 @@ export default function QuizPage() {
                 
                 return (
                   <button
-                    key={q.id}
+                    key={index}
                     onClick={() => setCurrentQuestionIndex(index)}
                     style={{
                       width: '36px',
@@ -469,7 +543,7 @@ export default function QuizPage() {
                 questionNumber={currentQuestionIndex + 1}
                 totalQuestions={questions.length}
                 isFlagged={flaggedQuestions.has(currentQuestion.id)}
-                onToggleFlag={() => toggleFlag(currentQuestion.id)}
+                onToggleFlag={toggleFlag}
               />
 
               {/* Navigation Buttons */}

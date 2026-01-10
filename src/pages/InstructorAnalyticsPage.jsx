@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToastContext } from "../App";
+import { fetchWithAuth, getAuthToken, getAuthTokenAsync } from "../utils/api";
+import { setMeta, removeCurrentUser, removeToken, getCurrentUser, getMeta } from "../utils/db";
 import logo from "../assets/1.svg";
 
 export default function InstructorAnalyticsPage() {
@@ -29,113 +31,93 @@ export default function InstructorAnalyticsPage() {
   }, []);
 
   useEffect(() => {
-    try {
-      const user = JSON.parse(localStorage.getItem("currentUser") || "null");
-      if (!user || user.role !== "instructor") {
-        navigate("/instructor/login");
-        return;
-      }
-
-      // Calculate analytics from quiz data
-      const quizzes = JSON.parse(localStorage.getItem("instructorQuizzes") || "[]");
-      const results = JSON.parse(localStorage.getItem("quizResults") || "[]");
-
-      // Overall Stats
-      const totalQuizzes = quizzes.length;
-      const publishedQuizzes = quizzes.filter(q => q.published).length;
-      const totalSubmissions = results.length;
-      const uniqueStudents = new Set(results.map(r => r.studentEmail)).size;
-      
-      // Calculate average score
-      const avgScore = results.length > 0
-        ? results.reduce((acc, r) => acc + (r.score / r.totalQuestions * 100), 0) / results.length
-        : 0;
-
-      // Calculate completion rate
-      const completionRate = totalQuizzes > 0 
-        ? (totalSubmissions / (totalQuizzes * uniqueStudents || 1)) * 100
-        : 0;
-
-      // Score Distribution
-      const scoreRanges = {
-        '0-60': 0,
-        '60-70': 0,
-        '70-80': 0,
-        '80-90': 0,
-        '90-100': 0
-      };
-
-      results.forEach(result => {
-        const score = (result.score / result.totalQuestions) * 100;
-        if (score < 60) scoreRanges['0-60']++;
-        else if (score < 70) scoreRanges['60-70']++;
-        else if (score < 80) scoreRanges['70-80']++;
-        else if (score < 90) scoreRanges['80-90']++;
-        else scoreRanges['90-100']++;
-      });
-
-      // Pass/Fail Distribution
-      const passCount = results.filter(r => (r.score / r.totalQuestions * 100) >= 60).length;
-      const failCount = results.length - passCount;
-      const passRate = results.length > 0 ? (passCount / results.length * 100) : 0;
-
-      // Quiz Performance
-      const quizPerformance = quizzes.map(quiz => {
-        const quizResults = results.filter(r => r.quizTitle === quiz.title);
-        const avgQuizScore = quizResults.length > 0
-          ? quizResults.reduce((acc, r) => acc + (r.score / r.totalQuestions * 100), 0) / quizResults.length
-          : 0;
-        
-        return {
-          title: quiz.title,
-          submissions: quizResults.length,
-          avgScore: avgQuizScore
-        };
-      }).sort((a, b) => b.avgScore - a.avgScore);
-
-      // Violation Analysis
-      const violationTypes = {};
-      results.forEach(result => {
-        if (result.violations && result.violations.length > 0) {
-          result.violations.forEach(v => {
-            violationTypes[v.type] = (violationTypes[v.type] || 0) + 1;
-          });
+    const loadAnalytics = async () => {
+      try {
+        const user = await getCurrentUser().catch(()=>null);
+        if (!user || user.role !== "instructor") {
+          navigate("/instructor/login");
+          return;
         }
-      });
+        setUser(user);
 
-      // Load notifications
-      const savedNotifications = JSON.parse(localStorage.getItem("instructorNotifications") || "[]");
-      setNotifications(savedNotifications);
-      
-      // Load dark mode preference
-      const savedDarkMode = localStorage.getItem("darkMode") === "true";
-      setDarkMode(savedDarkMode);
-      
-      setUser(user);
+        // Check token before calling API (fast localStorage path, fallback to IndexedDB)
+        const token = getAuthToken() || await getAuthTokenAsync();
+        if (!token) {
+          console.warn('[InstructorAnalyticsPage] No auth token found, redirecting to login');
+          navigate('/instructor/login');
+          return;
+        }
 
-      setTimeout(() => setPageLoaded(true), 50);
+        // Load analytics from API and normalize the response shape
+        const response = await fetchWithAuth('/api/instructor/analytics.php');
+        const text = await response.text().catch(() => '');
+        let data = null;
+        try {
+          data = text ? JSON.parse(text) : null;
+        } catch (err) {
+          data = text;
+        }
 
-      setAnalytics({
-        totalQuizzes,
-        publishedQuizzes,
-        totalSubmissions,
-        uniqueStudents,
-        avgScore,
-        completionRate,
-        scoreRanges,
-        passCount,
-        failCount,
-        passRate,
-        quizPerformance,
-        violationTypes
-      });
+        if (!response.ok) {
+          const message = data && data.message ? data.message : `Failed to load analytics (status ${response.status})`;
+          throw new Error(message);
+        }
 
-    } catch (error) {
-    }
-  }, [navigate]);
+        // Normalize analytics object to avoid runtime errors in the UI
+        const defaults = {
+          totalStudents: 0,
+          totalQuizzes: 0,
+          totalSubmissions: 0,
+          uniqueStudents: 0,
+          averageScore: 0,
+          avgScore: 0,
+          completionRate: 0,
+          passRate: 0,
+          quizPerformance: [],
+          passCount: 0,
+          failCount: 0,
+          overallPassRate: 0,
+          scoreRanges: {},
+          violationTypes: {},
+          metrics: []
+        };
+
+        let analyticsData = {};
+        if (data && typeof data === 'object') {
+          analyticsData = { ...defaults, ...data };
+          // Ensure nested shapes
+          if (!analyticsData.quizPerformance || !Array.isArray(analyticsData.quizPerformance)) analyticsData.quizPerformance = [];
+          if (!analyticsData.scoreRanges || typeof analyticsData.scoreRanges !== 'object') analyticsData.scoreRanges = {};
+          if (!analyticsData.violationTypes || typeof analyticsData.violationTypes !== 'object') analyticsData.violationTypes = {};
+          if (!analyticsData.metrics || !Array.isArray(analyticsData.metrics)) analyticsData.metrics = [];
+        } else {
+          analyticsData = defaults;
+        }
+
+        setAnalytics(analyticsData);
+
+        // Load notifications
+        const rawNotifs = await getMeta('instructorNotifications').catch(()=>null);
+        setNotifications(rawNotifs ? JSON.parse(rawNotifs) : []);
+
+        // Load dark mode preference
+        const rawDark = await getMeta('darkMode').catch(()=>null);
+        setDarkMode(rawDark === 'true');
+
+        setTimeout(() => setPageLoaded(true), 50);
+      } catch (error) {
+        console.error('Load analytics error:', error);
+        showToast("Failed to load analytics. Please try again.", "error");
+        navigate("/instructor/login");
+      }
+    };
+
+    loadAnalytics();
+  }, [navigate, showToast]);
 
   const handleLogout = () => {
-    localStorage.removeItem("currentUser");
+    removeCurrentUser().catch(()=>{});
+    removeToken().catch(()=>{});
     navigate("/instructor/login");
   };
 
@@ -152,19 +134,19 @@ export default function InstructorAnalyticsPage() {
   const toggleDarkMode = () => {
     const newMode = !darkMode;
     setDarkMode(newMode);
-    localStorage.setItem("darkMode", newMode.toString());
+    setMeta('darkMode', newMode.toString()).catch(()=>{});
     showToast(`Dark mode ${newMode ? 'enabled' : 'disabled'}`, "info");
   };
 
   const markNotificationAsRead = (id) => {
     const updated = notifications.map(n => n.id === id ? { ...n, read: true } : n);
     setNotifications(updated);
-    localStorage.setItem("instructorNotifications", JSON.stringify(updated));
+    setMeta('instructorNotifications', JSON.stringify(updated)).catch(()=>{});
   };
 
   const clearAllNotifications = () => {
     setNotifications([]);
-    localStorage.setItem("instructorNotifications", "[]");
+    setMeta('instructorNotifications', JSON.stringify([])).catch(()=>{});
     showToast("All notifications cleared", "success");
     setShowNotifications(false);
   };
@@ -189,7 +171,7 @@ export default function InstructorAnalyticsPage() {
       csvContent += "QUIZ PERFORMANCE\n";
       csvContent += "Quiz Title,Total Attempts,Average Score,Pass Rate\n";
       analytics.quizPerformance.forEach(quiz => {
-        csvContent += `"${quiz.title}",${quiz.attempts},${quiz.avgScore}%,${quiz.passRate}%\n`;
+        csvContent += `"${quiz.quizName || quiz.title}",${quiz.submissions || quiz.attempts},${quiz.averageScore || quiz.avgScore}%,${quiz.passRate}%\n`;
       });
       csvContent += "\n";
       
@@ -724,35 +706,131 @@ export default function InstructorAnalyticsPage() {
                 Comprehensive insights into quiz performance and student engagement
               </p>
             </div>
-            <button
-              onClick={handleExport}
-              style={{
-                padding: '12px 24px',
-                borderRadius: '12px',
-                border: '2px solid #6366F1',
-                backgroundColor: theme.card,
-                color: '#6366F1',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600',
-                transition: 'all 0.3s ease',
-                fontFamily: 'var(--font-body)'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.backgroundColor = '#6366F1';
-                e.target.style.color = 'white';
-                e.target.style.transform = 'translateY(-2px)';
-                e.target.style.boxShadow = '0 4px 12px rgba(99, 102, 241, 0.3)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.backgroundColor = 'white';
-                e.target.style.color = '#6366F1';
-                e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = 'none';
-              }}
-            >
-              📥 Export Report
-            </button>
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+              <button
+                onClick={async () => {
+                  try {
+                    setAnalytics(null); // Show loading
+                    const user = await getCurrentUser().catch(()=>null);
+                    if (!user || user.role !== "instructor") {
+                      navigate("/instructor/login");
+                      return;
+                    }
+
+                    const token = getAuthToken() || await getAuthTokenAsync();
+                    if (!token) {
+                      navigate('/instructor/login');
+                      return;
+                    }
+
+                    const response = await fetchWithAuth('/api/instructor/analytics.php');
+                    const text = await response.text().catch(() => '');
+                    let data = null;
+                    try {
+                      data = text ? JSON.parse(text) : null;
+                    } catch (err) {
+                      data = text;
+                    }
+
+                    if (!response.ok) {
+                      const message = data && data.message ? data.message : `Failed to load analytics (status ${response.status})`;
+                      throw new Error(message);
+                    }
+
+                    const defaults = {
+                      totalStudents: 0,
+                      totalQuizzes: 0,
+                      totalSubmissions: 0,
+                      uniqueStudents: 0,
+                      averageScore: 0,
+                      avgScore: 0,
+                      completionRate: 0,
+                      passRate: 0,
+                      quizPerformance: [],
+                      passCount: 0,
+                      failCount: 0,
+                      overallPassRate: 0,
+                      scoreRanges: {},
+                      violationTypes: {},
+                      metrics: []
+                    };
+
+                    let analyticsData = {};
+                    if (data && typeof data === 'object') {
+                      analyticsData = { ...defaults, ...data };
+                      if (!analyticsData.quizPerformance || !Array.isArray(analyticsData.quizPerformance)) analyticsData.quizPerformance = [];
+                      if (!analyticsData.scoreRanges || typeof analyticsData.scoreRanges !== 'object') analyticsData.scoreRanges = {};
+                      if (!analyticsData.violationTypes || typeof analyticsData.violationTypes !== 'object') analyticsData.violationTypes = {};
+                      if (!analyticsData.metrics || !Array.isArray(analyticsData.metrics)) analyticsData.metrics = [];
+                    } else {
+                      analyticsData = defaults;
+                    }
+
+                    setAnalytics(analyticsData);
+                    showToast("Analytics refreshed successfully", "success");
+                  } catch (error) {
+                    console.error('Refresh analytics error:', error);
+                    showToast("Failed to refresh analytics. Please try again.", "error");
+                    setAnalytics({}); // Reset to trigger reload
+                  }
+                }}
+                style={{
+                  padding: '12px 24px',
+                  borderRadius: '12px',
+                  border: '2px solid #22C55E',
+                  backgroundColor: theme.card,
+                  color: '#22C55E',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  transition: 'all 0.3s ease',
+                  fontFamily: 'var(--font-body)'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = '#22C55E';
+                  e.target.style.color = 'white';
+                  e.target.style.transform = 'translateY(-2px)';
+                  e.target.style.boxShadow = '0 4px 12px rgba(34, 197, 94, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = theme.card;
+                  e.target.style.color = '#22C55E';
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = 'none';
+                }}
+              >
+                🔄 Refresh Data
+              </button>
+              <button
+                onClick={handleExport}
+                style={{
+                  padding: '12px 24px',
+                  borderRadius: '12px',
+                  border: '2px solid #6366F1',
+                  backgroundColor: theme.card,
+                  color: '#6366F1',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  transition: 'all 0.3s ease',
+                  fontFamily: 'var(--font-body)'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = '#6366F1';
+                  e.target.style.color = 'white';
+                  e.target.style.transform = 'translateY(-2px)';
+                  e.target.style.boxShadow = '0 4px 12px rgba(99, 102, 241, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = theme.card;
+                  e.target.style.color = '#6366F1';
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = 'none';
+                }}
+              >
+                📥 Export Report
+              </button>
+            </div>
           </div>
 
           {/* Key Metrics */}

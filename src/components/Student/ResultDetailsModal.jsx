@@ -1,23 +1,37 @@
-export default function ResultDetailsModal({ quiz, onClose }) {
-  if (!quiz) return null;
+export default function ResultDetailsModal({ quiz, result, onClose, navigateToSubmission }) {
+  if (!quiz && !result) return null;
 
-  // Mock result data - in real app this would come from props
-  const resultData = {
-    score: 18,
-    totalQuestions: 20,
-    percentage: 90,
-    passed: true,
-    timeSpent: "45 minutes",
-    violations: 0,
-    submittedDate: "December 8, 2024",
-    correctAnswers: 18,
-    incorrectAnswers: 2,
-    questions: [
-      { id: 1, question: "What is React?", userAnswer: "A JavaScript library", correctAnswer: "A JavaScript library", isCorrect: true },
-      { id: 2, question: "What is JSX?", userAnswer: "JavaScript XML", correctAnswer: "JavaScript XML", isCorrect: true },
-      // Add more as needed
-    ]
-  };
+  // Prefer explicit `result` prop, then look for embedded submission/result on the quiz object
+  const resultData = result || quiz?.result || quiz?.submission || null;
+
+  if (!resultData) {
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        padding: '20px'
+      }}>
+        <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', maxWidth: '560px', width: '100%' }}>
+          <h3 style={{ marginTop: 0 }}>No result details available</h3>
+          <p style={{ color: '#666' }}>This result does not include detailed breakdowns. Use the submission details page for more information.</p>
+          <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+            <button onClick={onClose} style={{ padding: '10px 14px', borderRadius: '8px', background: '#e5e7eb', border: 'none' }}>Close</button>
+            {navigateToSubmission && (
+              <button onClick={() => { navigateToSubmission(quiz); onClose(); }} style={{ padding: '10px 14px', borderRadius: '8px', background: '#6366F1', color: 'white', border: 'none' }}>View Submission</button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const { score, totalQuestions, percentage, passed, timeSpent, violations, submittedDate, correctAnswers, incorrectAnswers } = resultData;
 

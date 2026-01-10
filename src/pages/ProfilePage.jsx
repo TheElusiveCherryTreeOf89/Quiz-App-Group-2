@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToastContext } from "../App";
+import { fetchWithAuth } from "../utils/api";
+import { setCurrentUser as setCurrentUserMeta, setMeta, removeCurrentUser, getCurrentUser, getMeta } from "../utils/db";
 
 const ProfilePage = () => {
   const [activeMenu, setActiveMenu] = useState("profile");
@@ -10,19 +12,36 @@ const ProfilePage = () => {
   const navigate = useNavigate();
   const showToast = useToastContext();
 
-  // Get current user with error handling
+  // Get current user and profile from backend
   const [currentUser, setCurrentUser] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [profileData, setProfileData] = useState({
-    name: "",
-    email: "",
-    studentId: "",
-    program: "",
-    year: "",
-    bio: "",
+    name: '',
+    email: '',
+    studentId: '',
+    program: '',
+    year: '',
+    bio: ''
   });
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [profilePictureUrl, setProfilePictureUrl] = useState(null);
+  // Fetch profile data from backend on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await fetchWithAuth('/api/profile');
+        const data = resp.data ?? (await resp.json().catch(() => null));
+        if (data) {
+          setProfileData(prev => ({ ...prev, ...data }));
+          setProfilePictureUrl(data.profilePictureUrl || null);
+        }
+      } catch (err) {
+        console.warn('[ProfilePage] load profile error, falling back to defaults', err);
+        setProfilePictureUrl(null);
+      }
+    })();
+  }, []);
 
   // Handle window resize for mobile responsiveness
   useEffect(() => {
@@ -38,41 +57,43 @@ const ProfilePage = () => {
   }, []);
 
   useEffect(() => {
-    try {
-      const user = JSON.parse(localStorage.getItem("currentUser") || "null");
-      if (!user || user.role !== "student") {
+    (async ()=>{
+      try{
+        const user = await getCurrentUser().catch(()=>null);
+        if (!user || user.role !== "student") {
+          navigate("/login");
+          return;
+        }
+        setCurrentUser(user);
+        setProfileData(prev => ({
+          ...prev,
+          name: user.name || "Student Name",
+          email: user.email,
+          studentId: user.studentId || "2024-00001",
+          program: user.program || "Computer Science",
+          year: user.year || "3rd Year",
+          bio: user.bio || "Passionate learner focused on academic excellence.",
+        }));
+
+        const rawDark = await getMeta('darkMode').catch(()=>null);
+        setDarkMode(rawDark === 'true');
+
+        setTimeout(() => setPageLoaded(true), 50);
+      }catch(e){
         navigate("/login");
-        return;
       }
-      setCurrentUser(user);
-      setProfileData({
-        name: user.name || "Student Name",
-        email: user.email,
-        studentId: user.studentId || "2024-00001",
-        program: user.program || "Computer Science",
-        year: user.year || "3rd Year",
-        bio: user.bio || "Passionate learner focused on academic excellence.",
-      });
-      
-      // Load dark mode preference
-      const savedDarkMode = localStorage.getItem("darkMode") === "true";
-      setDarkMode(savedDarkMode);
-      
-      setTimeout(() => setPageLoaded(true), 50);
-    } catch (error) {
-      navigate("/login");
-    }
+    })();
   }, [navigate]);
 
   const handleLogout = () => {
-    localStorage.removeItem("currentUser");
+    removeCurrentUser().catch(() => {});
     navigate("/login");
   };
   
   const toggleDarkMode = () => {
     const newMode = !darkMode;
     setDarkMode(newMode);
-    localStorage.setItem("darkMode", newMode.toString());
+    setMeta('darkMode', newMode.toString()).catch(() => {});
     showToast(`Dark mode ${newMode ? 'enabled' : 'disabled'}`, "info");
   };
 
@@ -86,29 +107,65 @@ const ProfilePage = () => {
     else if (menuId === "notifications") navigate("/student/notifications");
   };
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     try {
-      // Update current user in localStorage
+      let apiSuccess = false;
+
+      try {
+        // Try to save to API first
+        const response = await fetchWithAuth('/api/profile', {
+          method: 'PUT',
+          body: JSON.stringify(profileData)
+        });
+
+        if (response.ok) {
+          const updatedProfile = response.data ?? (await response.json().catch(() => null));
+          setProfileData(prev => ({ ...prev, ...updatedProfile }));
+          apiSuccess = true;
+        }
+      } catch (apiError) {
+        console.warn('API not available, falling back to localStorage:', apiError);
+      }
+
+      // If API succeeded and there's a selected file, try to upload picture
+      if (apiSuccess && selectedFile) {
+        try {
+          const formData = new FormData();
+          formData.append('profilePicture', selectedFile);
+
+          const uploadResponse = await fetchWithAuth('/api/profile/picture', {
+            method: 'POST',
+            body: formData
+          });
+
+          if (uploadResponse.ok) {
+            const uploadResult = uploadResponse.data ?? (await uploadResponse.json().catch(() => null));
+            setProfilePictureUrl(uploadResult?.profilePictureUrl || null);
+          }
+        } catch (uploadError) {
+          console.warn('Picture upload failed:', uploadError);
+        }
+      }
+
+      // Persist updated currentUser to IndexedDB and state
       const updatedUser = { ...currentUser, ...profileData };
-      localStorage.setItem("currentUser", JSON.stringify(updatedUser));
       setCurrentUser(updatedUser);
+      // Persist currentUser to IndexedDB
+      setCurrentUserMeta(updatedUser).catch(() => {});
+
       setIsEditing(false);
+      setSelectedFile(null);
       showToast("Profile updated successfully!", "success");
     } catch (error) {
+      console.error('Save profile error:', error);
       showToast("Failed to save profile. Please try again.", "error");
     }
   };
 
   const handleCancelEdit = () => {
-    // Reset to original data
-    setProfileData({
-      name: currentUser?.name || "Student Name",
-      email: currentUser?.email || "",
-      studentId: currentUser?.studentId || "2024-00001",
-      program: currentUser?.program || "Computer Science",
-      year: currentUser?.year || "3rd Year",
-      bio: currentUser?.bio || "Passionate learner focused on academic excellence.",
-    });
+    // Reset to current profileData (which includes any loaded data)
+    setProfileData(prev => ({ ...prev }));
+    setSelectedFile(null);
     setIsEditing(false);
   };
   
@@ -138,6 +195,9 @@ const ProfilePage = () => {
       </div>
     );
   }
+
+  // Use profileData directly since it's always defined
+  const safeProfile = profileData;
 
   return (
     <div style={{ 
@@ -450,145 +510,7 @@ const ProfilePage = () => {
               {darkMode ? '☀️' : '🌙'}
             </button>
             
-            {/* Profile Icon with Dropdown */}
-            <div style={{ position: 'relative' }}>
-              <button 
-                onClick={() => setShowProfileMenu(!showProfileMenu)}
-                style={{
-                  width: isMobile ? '36px' : '40px',
-                  height: isMobile ? '36px' : '40px',
-                  borderRadius: '50%',
-                  backgroundColor: 'black',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'white',
-                  fontSize: isMobile ? '16px' : '20px',
-                  transition: 'transform 0.2s'
-                }}
-                onMouseEnter={(e) => e.target.style.transform = 'scale(1.1)'}
-                onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
-              >👤</button>
-              
-              {/* Profile Dropdown */}
-              {showProfileMenu && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  right: 0,
-                  marginTop: '8px',
-                  backgroundColor: theme.card,
-                  borderRadius: '12px',
-                  boxShadow: darkMode ? '0 8px 24px rgba(0,0,0,0.5)' : '0 8px 24px rgba(0,0,0,0.15)',
-                  width: '220px',
-                  zIndex: 1000,
-                  animation: 'scaleIn 0.2s ease-out',
-                  overflow: 'hidden',
-                  transition: 'background-color 0.3s ease'
-                }}>
-                  <div style={{
-                    padding: '16px',
-                    borderBottom: `1px solid ${theme.border}`,
-                    backgroundColor: darkMode ? '#3d3d3d' : '#f9f9f9'
-                  }}>
-                    <div style={{ fontSize: '16px', fontWeight: '700', color: theme.text, marginBottom: '4px', fontFamily: 'var(--font-heading)', transition: 'color 0.3s ease' }}>
-                      {currentUser?.name || 'Student'}
-                    </div>
-                    <div style={{ fontSize: '13px', color: theme.textSecondary, fontFamily: 'var(--font-body)', transition: 'color 0.3s ease' }}>
-                      {currentUser?.email}
-                    </div>
-                  </div>
-                  
-                  <button
-                    onClick={() => {
-                      setShowProfileMenu(false);
-                      navigate("/student/profile");
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      border: 'none',
-                      background: 'none',
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      color: theme.text,
-                      transition: 'background-color 0.2s',
-                      fontFamily: 'var(--font-body)'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                  >
-                    <span>👤</span>
-                    <span>My Profile</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setShowProfileMenu(false);
-                      navigate("/student/dashboard");
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      border: 'none',
-                      background: 'none',
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      color: theme.text,
-                      transition: 'background-color 0.2s',
-                      fontFamily: 'var(--font-body)'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                  >
-                    <span>📊</span>
-                    <span>Dashboard</span>
-                  </button>
-
-                  <div style={{ borderTop: `1px solid ${theme.border}` }}>
-                    <button
-                      onClick={() => {
-                        setShowProfileMenu(false);
-                        handleLogout();
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '12px 16px',
-                        border: 'none',
-                        background: 'none',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        color: '#DC2626',
-                        transition: 'background-color 0.2s',
-                        fontFamily: 'var(--font-body)'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                    >
-                      <span>🚪</span>
-                      <span>Log Out</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+            {/* Profile Icon with Dropdown removed */}
           </div>
         </header>
 
@@ -638,18 +560,58 @@ const ProfilePage = () => {
                 fontSize: '48px',
                 color: 'white',
                 fontWeight: '700',
-                border: '4px solid #FFD700'
+                border: '4px solid #FFD700',
+                position: 'relative',
+                overflow: 'hidden'
               }}>
-                {profileData.name.charAt(0).toUpperCase()}
+                {profilePictureUrl ? (
+                  <img 
+                    src={profilePictureUrl} 
+                    alt="Profile" 
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      borderRadius: '50%'
+                    }}
+                  />
+                ) : (
+                  safeProfile.name ? safeProfile.name.charAt(0).toUpperCase() : '?'
+                )}
+                {isEditing && (
+                  <div style={{
+                    position: 'absolute',
+                    bottom: '0',
+                    right: '0',
+                    backgroundColor: '#FF6B00',
+                    borderRadius: '50%',
+                    width: '32px',
+                    height: '32px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    border: '2px solid white'
+                  }}>
+                    <label htmlFor="profile-picture-input" style={{ cursor: 'pointer', fontSize: '16px' }}>📷</label>
+                    <input
+                      id="profile-picture-input"
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setSelectedFile(e.target.files[0])}
+                      style={{ display: 'none' }}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Name and Email */}
               <div style={{ flex: 1 }}>
                 <h2 style={{ fontSize: '28px', fontWeight: '700', color: theme.text, margin: 0, fontFamily: 'var(--font-heading)', transition: 'color 0.3s ease' }}>
-                  {profileData.name}
+                  {safeProfile.name || <span style={{color: theme.textSecondary}}>No name set</span>}
                 </h2>
                 <p style={{ fontSize: '16px', color: theme.textSecondary, marginTop: '6px', marginBottom: '8px', fontFamily: 'var(--font-body)', transition: 'color 0.3s ease' }}>
-                  {profileData.email}
+                  {safeProfile.email || <span style={{color: theme.textSecondary}}>No email set</span>}
                 </p>
                 <div style={{
                   display: 'inline-block',
@@ -662,7 +624,7 @@ const ProfilePage = () => {
                   fontFamily: 'var(--font-body)',
                   transition: 'all 0.3s ease'
                 }}>
-                  Student ID: {profileData.studentId}
+                  Student ID: {safeProfile.studentId || <span style={{color: theme.textSecondary}}>Not set</span>}
                 </div>
               </div>
 
@@ -713,8 +675,8 @@ const ProfilePage = () => {
                 {isEditing ? (
                   <input
                     type="text"
-                    value={profileData.name}
-                    onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
+                    value={safeProfile.name}
+                    onChange={(e) => setProfileData({ ...(profileData || {}), name: e.target.value })}
                     style={{
                       width: '100%',
                       padding: '12px 16px',
@@ -730,7 +692,7 @@ const ProfilePage = () => {
                   />
                 ) : (
                   <p style={{ fontSize: '16px', fontWeight: '500', color: '#1a1a1a', margin: 0 }}>
-                    {profileData.name}
+                    {safeProfile.name || <span style={{color: theme.textSecondary}}>No name set</span>}
                   </p>
                 )}
               </div>
@@ -749,7 +711,7 @@ const ProfilePage = () => {
                   Email Address
                 </label>
                 <p style={{ fontSize: '16px', fontWeight: '500', color: '#666', margin: 0 }}>
-                  {profileData.email} <span style={{ fontSize: '12px', color: '#999' }}>(Cannot be changed)</span>
+                  {safeProfile.email || <span style={{color: theme.textSecondary}}>No email set</span>} <span style={{ fontSize: '12px', color: '#999' }}>(Cannot be changed)</span>
                 </p>
               </div>
 
@@ -769,8 +731,8 @@ const ProfilePage = () => {
                 {isEditing ? (
                   <input
                     type="text"
-                    value={profileData.program}
-                    onChange={(e) => setProfileData({ ...profileData, program: e.target.value })}
+                    value={safeProfile.program}
+                    onChange={(e) => setProfileData({ ...(profileData || {}), program: e.target.value })}
                     style={{
                       width: '100%',
                       padding: '12px 16px',
@@ -786,7 +748,7 @@ const ProfilePage = () => {
                   />
                 ) : (
                   <p style={{ fontSize: '16px', fontWeight: '500', color: '#1a1a1a', margin: 0 }}>
-                    {profileData.program}
+                    {safeProfile.program || <span style={{color: theme.textSecondary}}>Not set</span>}
                   </p>
                 )}
               </div>
@@ -806,8 +768,8 @@ const ProfilePage = () => {
                 </label>
                 {isEditing ? (
                   <select
-                    value={profileData.year}
-                    onChange={(e) => setProfileData({ ...profileData, year: e.target.value })}
+                    value={safeProfile.year}
+                    onChange={(e) => setProfileData({ ...(profileData || {}), year: e.target.value })}
                     style={{
                       width: '100%',
                       padding: '12px 16px',
@@ -830,7 +792,7 @@ const ProfilePage = () => {
                   </select>
                 ) : (
                   <p style={{ fontSize: '16px', fontWeight: '500', color: '#1a1a1a', margin: 0 }}>
-                    {profileData.year}
+                    {safeProfile.year || <span style={{color: theme.textSecondary}}>Not set</span>}
                   </p>
                 )}
               </div>
@@ -850,8 +812,8 @@ const ProfilePage = () => {
                 </label>
                 {isEditing ? (
                   <textarea
-                    value={profileData.bio}
-                    onChange={(e) => setProfileData({ ...profileData, bio: e.target.value })}
+                    value={safeProfile.bio}
+                    onChange={(e) => setProfileData({ ...(profileData || {}), bio: e.target.value })}
                     rows={4}
                     style={{
                       width: '100%',
@@ -870,7 +832,7 @@ const ProfilePage = () => {
                   />
                 ) : (
                   <p style={{ fontSize: '16px', fontWeight: '500', color: '#1a1a1a', margin: 0, lineHeight: '1.6' }}>
-                    {profileData.bio}
+                    {safeProfile.bio || <span style={{color: theme.textSecondary}}>No bio set</span>}
                   </p>
                 )}
               </div>

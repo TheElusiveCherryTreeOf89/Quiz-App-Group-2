@@ -46,13 +46,22 @@ try {
     // Hash password
     $hashedPassword = password_hash($data->password, PASSWORD_BCRYPT);
     
-    // Insert new user
-    $query = "INSERT INTO users (email, password, name, role) VALUES (:email, :password, :name, :role)";
+    // Optionally set instructor_id when provided (useful for linking students to instructors)
+    $instructorId = null;
+    if (isset($data->instructor_id)) $instructorId = (int)$data->instructor_id;
+
+    // Insert new user (include instructor_id if present)
+    if ($instructorId) {
+        $query = "INSERT INTO users (email, password, name, role, instructor_id) VALUES (:email, :password, :name, :role, :instructor_id)";
+    } else {
+        $query = "INSERT INTO users (email, password, name, role) VALUES (:email, :password, :name, :role)";
+    }
     $stmt = $db->prepare($query);
     $stmt->bindParam(":email", $data->email);
     $stmt->bindParam(":password", $hashedPassword);
     $stmt->bindParam(":name", $data->name);
     $stmt->bindParam(":role", $role);
+    if ($instructorId) $stmt->bindParam(":instructor_id", $instructorId, PDO::PARAM_INT);
     
     if ($stmt->execute()) {
         $userId = $db->lastInsertId();

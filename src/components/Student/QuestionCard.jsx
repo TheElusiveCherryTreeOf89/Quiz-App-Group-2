@@ -1,8 +1,9 @@
+import React, { useMemo } from 'react';
 import { useQuizStore } from "../../store/quizStore";
 
-export default function QuestionCard({ question, questionNumber, totalQuestions, isFlagged, onToggleFlag }) {
+function QuestionCard({ question, questionNumber, totalQuestions, isFlagged, onToggleFlag }) {
   const { answers, saveAnswer } = useQuizStore();
-  const selectedAnswer = answers[question.id];
+  const selectedAnswer = useMemo(() => answers[question.id], [answers, question.id]);
 
   return (
     <div style={{
@@ -50,7 +51,7 @@ export default function QuestionCard({ question, questionNumber, totalQuestions,
         
         {/* Flag Button */}
         <button
-          onClick={onToggleFlag}
+          onClick={() => onToggleFlag(question.id)}
           style={{
             backgroundColor: isFlagged ? '#FEF3C7' : '#F3F4F6',
             color: isFlagged ? '#92400E' : '#6B7280',
@@ -80,7 +81,7 @@ export default function QuestionCard({ question, questionNumber, totalQuestions,
         marginBottom: '30px',
         lineHeight: '1.5'
       }}>
-        {question.text}
+        {question.question || question.text}
       </h3>
 
       {/* Options */}
@@ -158,3 +159,5 @@ export default function QuestionCard({ question, questionNumber, totalQuestions,
     </div>
   );
 }
+
+export default React.memo(QuestionCard);

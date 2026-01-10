@@ -4,9 +4,22 @@ require_once '../../config/database.php';
 $database = new Database();
 $db = $database->getConnection();
 
-$data = json_decode(file_get_contents("php://input"));
+$data = json_decode(file_get_contents("php://input"), true);
 
-if (empty($data->quiz_id) || empty($data->instructor_id)) {
+// Allow instructor id from body or from Authorization token
+$headers = getallheaders();
+$authHeader = isset($headers['Authorization']) ? $headers['Authorization'] : '';
+$tokenUserId = null;
+if (!empty($authHeader) && preg_match('/Bearer\s+(.*)$/i', $authHeader, $m)) {
+    $t = $m[1];
+    $u = @json_decode(base64_decode($t), true);
+    if ($u && isset($u['id'])) $tokenUserId = (int)$u['id'];
+}
+
+$quizId = isset($data['quiz_id']) ? (int)$data['quiz_id'] : 0;
+$instructorId = isset($data['instructor_id']) ? (int)$data['instructor_id'] : $tokenUserId;
+
+if ($quizId === 0 || !$instructorId) {
     http_response_code(400);
     echo json_encode([
         "success" => false,
@@ -19,8 +32,8 @@ try {
     // Verify instructor owns this quiz
     $checkQuery = "SELECT id FROM quizzes WHERE id = :quiz_id AND created_by = :instructor_id";
     $checkStmt = $db->prepare($checkQuery);
-    $checkStmt->bindParam(":quiz_id", $data->quiz_id, PDO::PARAM_INT);
-    $checkStmt->bindParam(":instructor_id", $data->instructor_id, PDO::PARAM_INT);
+    $checkStmt->bindParam(":quiz_id", $quizId, PDO::PARAM_INT);
+    $checkStmt->bindParam(":instructor_id", $instructorId, PDO::PARAM_INT);
     $checkStmt->execute();
     
     if ($checkStmt->rowCount() === 0) {
@@ -34,63 +47,63 @@ try {
     
     // Build dynamic update query
     $updates = [];
-    $params = [":quiz_id" => $data->quiz_id];
+    $params = [":quiz_id" => $quizId];
     
-    if (isset($data->title)) {
+    if (isset($data['title'])) {
         $updates[] = "title = :title";
-        $params[":title"] = $data->title;
+        $params[":title"] = $data['title'];
     }
     
-    if (isset($data->description)) {
+    if (isset($data['description'])) {
         $updates[] = "description = :description";
-        $params[":description"] = $data->description;
+        $params[":description"] = $data['description'];
     }
     
-    if (isset($data->questions)) {
+    if (isset($data['questions'])) {
         $updates[] = "questions = :questions";
         $updates[] = "items_count = :items_count";
-        $params[":questions"] = json_encode($data->questions);
-        $params[":items_count"] = count($data->questions);
+        $params[":questions"] = json_encode($data['questions']);
+        $params[":items_count"] = count($data['questions']);
     }
     
-    if (isset($data->timeLimit)) {
+    if (isset($data['timeLimit'])) {
         $updates[] = "time_limit = :time_limit";
-        $params[":time_limit"] = intval($data->timeLimit);
+        $params[":time_limit"] = intval($data['timeLimit']);
     }
     
-    if (isset($data->dueDate)) {
+    if (isset($data['dueDate'])) {
         $updates[] = "due_date = :due_date";
-        $params[":due_date"] = $data->dueDate;
+        $params[":due_date"] = $data['dueDate'];
     }
     
-    if (isset($data->attemptsAllowed)) {
+    if (isset($data['attemptsAllowed'])) {
         $updates[] = "attempts_allowed = :attempts_allowed";
-        $params[":attempts_allowed"] = intval($data->attemptsAllowed);
+        $params[":attempts_allowed"] = intval($data['attemptsAllowed']);
     }
     
-    if (isset($data->passingScore)) {
+    if (isset($data['passingScore'])) {
         $updates[] = "passing_score = :passing_score";
-        $params[":passing_score"] = intval($data->passingScore);
+        $params[":passing_score"] = intval($data['passingScore']);
     }
     
-    if (isset($data->maxViolations)) {
+    if (isset($data['maxViolations'])) {
         $updates[] = "max_violations = :max_violations";
-        $params[":max_violations"] = intval($data->maxViolations);
+        $params[":max_violations"] = intval($data['maxViolations']);
     }
     
-    if (isset($data->shuffleQuestions)) {
+    if (isset($data['shuffleQuestions'])) {
         $updates[] = "shuffle_questions = :shuffle_questions";
-        $params[":shuffle_questions"] = (bool)$data->shuffleQuestions;
+        $params[":shuffle_questions"] = (bool)$data['shuffleQuestions'];
     }
     
-    if (isset($data->shuffleOptions)) {
+    if (isset($data['shuffleOptions'])) {
         $updates[] = "shuffle_options = :shuffle_options";
-        $params[":shuffle_options"] = (bool)$data->shuffleOptions;
+        $params[":shuffle_options"] = (bool)$data['shuffleOptions'];
     }
     
-    if (isset($data->published)) {
+    if (isset($data['published'])) {
         $updates[] = "published = :published";
-        $params[":published"] = (bool)$data->published;
+        $params[":published"] = (bool)$data['published'];
     }
     
     if (empty($updates)) {
@@ -110,11 +123,26 @@ try {
     }
     
     if ($stmt->execute()) {
-        http_response_code(200);
-        echo json_encode([
-            "success" => true,
-            "message" => "Quiz updated successfully"
-        ]);
+        // Fetch updated quiz and return it
+        $q = $db->prepare('SELECT * FROM quizzes WHERE id = :quiz_id LIMIT 1');
+        $q->execute([':quiz_id' => $quizId]);
+        $updated = $q->fetch(PDO::FETCH_ASSOC);
+        if ($updated) {
+            http_response_code(200);
+            echo json_encode([
+                "success" => true,
+                "quiz" => [
+                    "id" => intval($updated['id']),
+                    "title" => $updated['title'],
+                    "description" => $updated['description'],
+                    "questions" => json_decode($updated['questions']),
+                    "published" => (bool)$updated['published']
+                ]
+            ]);
+        } else {
+            http_response_code(200);
+            echo json_encode(["success" => true, "message" => "Quiz updated successfully"]);
+        }
     } else {
         http_response_code(500);
         echo json_encode([

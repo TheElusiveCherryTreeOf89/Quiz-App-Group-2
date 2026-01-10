@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { setCurrentUser } from "../utils/db";
 import { useNavigate } from "react-router-dom";
 
 export default function LoginPage() {
@@ -11,7 +12,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
@@ -35,18 +36,22 @@ export default function LoginPage() {
       setError("Password must be at least 6 characters");
       return;
     }
-
     setLoading(true);
-    
-    setTimeout(() => {
+
+    setTimeout(async () => {
       try {
         const userData = {
           email: formData.email.trim().toLowerCase(),
           role: "student",
           name: formData.email.split("@")[0],
         };
-        
-        localStorage.setItem("currentUser", JSON.stringify(userData));
+
+        try {
+          await setCurrentUser(userData);
+        } catch (e) {
+          console.warn('Failed to persist currentUser to IndexedDB', e);
+        }
+        setLoading(false);
         navigate("/student/dashboard");
       } catch (err) {
         setError("Login failed. Please try again.");

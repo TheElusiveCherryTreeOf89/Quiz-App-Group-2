@@ -1,5 +1,7 @@
 import { create } from "zustand";
 import questionsData from "../data/questions.json";
+import { fetchWithAuth } from "../utils/api";
+import { saveSubmission, setMeta, getMeta } from "../utils/db";
 
 export const useQuizStore = create((set, get) => ({
   // States
@@ -8,6 +10,7 @@ export const useQuizStore = create((set, get) => ({
   answers: {},
   isSubmitted: false,
   questions: questionsData.questions,
+  quizId: null,
   showViolationModal: false,
 
   // Actions
@@ -30,51 +33,52 @@ export const useQuizStore = create((set, get) => ({
       showViolationModal: false,
     })),
 
-  submitQuiz: (userEmail, userName) =>
+  submitQuiz: (userObj) =>
     set((state) => {
       try {
         const score = state.questions.reduce((acc, q) => {
-          return acc + (state.answers[q.id] === q.correct ? 1 : 0);
+          const correctAnswer = q.correct || q.correctAnswer;
+          return acc + (state.answers[q.id] === correctAnswer ? 1 : 0);
         }, 0);
-
         const result = {
-          studentEmail: userEmail,
-          studentName: userName,
+          student_id: userObj?.id || null,
+          studentEmail: userObj?.email || null,
+          studentName: userObj?.name || null,
+          quiz_id: state.quizId || 'demo-quiz',
           score,
-          totalQuestions: state.questions.length,
+          total_questions: state.questions.length,
           violations: state.violations,
-          timeRemaining: state.timeLeft,
-          submittedAt: new Date().toLocaleString(),
-          answers: Object.values(state.answers),
+          time_remaining: state.timeLeft,
+          submitted_at: new Date().toISOString(),
+          answers: state.answers,
           questions: state.questions,
         };
-
-        // Save to localStorage with error handling
-        try {
-          const existingResults = JSON.parse(localStorage.getItem("quizResults") || "[]");
-          
-          // Check for duplicate submission
-          const alreadySubmitted = existingResults.some(r => r.studentEmail === userEmail);
-          if (alreadySubmitted) {
-            console.warn("Quiz already submitted by this user");
-            return { isSubmitted: true };
+        // Try to submit to backend; on failure queue to IndexedDB
+        (async () => {
+          try {
+            await saveSubmission(result);
+            const existing = (await getMeta('completedQuizzes')) || {};
+            existing[userObj?.email] = true;
+            await setMeta('completedQuizzes', existing);
+            await setMeta(`quizProgress_${userObj?.email}`, null);
+          } catch (dbErr) {
+            console.error('Failed to save submission locally:', dbErr);
+            alert('Failed to save your quiz. Please try again.');
+            return;
           }
 
-          existingResults.push(result);
-          localStorage.setItem("quizResults", JSON.stringify(existingResults));
-
-          // Mark quiz as completed for this user
-          const completedQuizzes = JSON.parse(localStorage.getItem("completedQuizzes") || "{}");
-          completedQuizzes[userEmail] = true;
-          localStorage.setItem("completedQuizzes", JSON.stringify(completedQuizzes));
-
-          // Clean up progress
-          localStorage.removeItem(`quizProgress_${userEmail}`);
-        } catch (storageError) {
-          console.error("Failed to save quiz results:", storageError);
-          alert("Failed to save your quiz. Please try again.");
-          return { isSubmitted: false };
-        }
+          try {
+            const resp = await fetchWithAuth('/api/quiz/submit.php', {
+              method: 'POST',
+              body: JSON.stringify(result)
+            });
+            if (!resp.ok) {
+              throw new Error('API submission failed');
+            }
+          } catch (apiErr) {
+            console.warn('API submit failed, but local save succeeded', apiErr);
+          }
+        })();
 
         return { isSubmitted: true };
       } catch (error) {
@@ -89,6 +93,12 @@ export const useQuizStore = create((set, get) => ({
       answers: { ...state.answers, [questionId]: answer },
     })),
 
+  setQuestions: (questions) =>
+    set(() => ({
+      questions: Array.isArray(questions) ? questions : [],
+    })),
+  setQuizId: (id) => set(() => ({ quizId: id })),
+
   resetQuiz: () =>
     set(() => ({
       timeLeft: 300,
@@ -96,5 +106,6 @@ export const useQuizStore = create((set, get) => ({
       answers: {},
       isSubmitted: false,
       showViolationModal: false,
+      questions: questionsData.questions,
     })),
 }));

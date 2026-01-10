@@ -34,7 +34,6 @@ _PROJECT_ARCHIVE/
 coverage/
 .nyc_output/
 
-# Documentation (KEEP THESE - they should be tracked)
-# README.md
-# GIT_WORKFLOW_GUIDE.md
-# VIDEO_SCRIPT_GIT_ACTIVITY.md
+# Documentation (exclude all markdown files except README.md)
+*.md
+!README.md

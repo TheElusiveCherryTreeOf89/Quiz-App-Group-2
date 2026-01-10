@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuizStore } from "../store/quizStore";
+import { getCurrentUser, getMeta } from "../utils/db";
 
 export default function ResultPendingPage() {
   const navigate = useNavigate();
@@ -8,31 +9,32 @@ export default function ResultPendingPage() {
   const { violations, questions } = useQuizStore();
 
   useEffect(() => {
-    try {
-      const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
-      if (!currentUser || currentUser.role !== "student") {
-        navigate("/login");
-        return;
-      }
-      setUser(currentUser);
-
-      // Check if results have been released
-      const checkResults = () => {
-        try {
-          const released = localStorage.getItem("resultsReleased") === "true";
-          if (released) {
-            navigate("/student/result");
-          }
-        } catch (error) {
+    (async () => {
+      try {
+        const currentUser = await getCurrentUser().catch(()=>null);
+        if (!currentUser || currentUser.role !== "student") {
+          navigate("/login");
+          return;
         }
-      };
+        setUser(currentUser);
 
-      checkResults();
-      const interval = setInterval(checkResults, 2000);
-      return () => clearInterval(interval);
-    } catch (error) {
-      navigate("/login");
-    }
+        // Check if results have been released
+        const checkResults = async () => {
+          try {
+            const releasedRaw = await getMeta('resultsReleased').catch(()=>null);
+            const released = releasedRaw === 'true' || releasedRaw === true;
+            if (released) navigate("/student/result");
+          } catch (error) {
+          }
+        };
+
+        checkResults();
+        const interval = setInterval(checkResults, 2000);
+        return () => clearInterval(interval);
+      } catch (error) {
+        navigate("/login");
+      }
+    })();
   }, [navigate]);
 
   const handleReturnToQuizzes = () => {

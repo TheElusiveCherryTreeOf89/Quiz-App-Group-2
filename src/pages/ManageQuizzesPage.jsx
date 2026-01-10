@@ -1,39 +1,39 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToastContext } from "../App";
+import { fetchWithAuth } from "../utils/api";
+import { setMeta, removeCurrentUser, getCurrentUser, getMeta, getAllQuizzes, putQuiz, getQuiz } from "../utils/db";
 
 export default function ManageQuizzesPage() {
   const navigate = useNavigate();
+  const { showToast } = useToastContext();
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState("available");
   const [activeMenu, setActiveMenu] = useState("manage-quizzes");
-  const [darkMode, setDarkMode] = useState(() => {
-    const saved = localStorage.getItem("darkMode");
-    return saved ? JSON.parse(saved) : false;
-  });
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pageLoaded, setPageLoaded] = useState(false);
 
   useEffect(() => {
-    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
-    if (!currentUser || currentUser.role !== "student") {
-      navigate("/login");
-      return;
-    }
-    setUser(currentUser);
-    
-    // Trigger page load animation
-    setTimeout(() => setPageLoaded(true), 50);
+    (async () => {
+      const currentUser = await getCurrentUser().catch(()=>null);
+      if (!currentUser || currentUser.role !== "student") {
+        navigate("/login");
+        return;
+      }
+      setUser(currentUser);
+      // Trigger page load animation
+      setTimeout(() => setPageLoaded(true), 50);
+    })();
   }, [navigate]);
 
   // Load dark mode preference
   useEffect(() => {
-    const saved = localStorage.getItem("darkMode");
-    if (saved) {
-      setDarkMode(JSON.parse(saved));
-    }
+    (async ()=>{
+      const raw = await getMeta('darkMode').catch(()=>null);
+      if (raw) setDarkMode(JSON.parse(raw));
+    })();
   }, []);
 
   // Handle window resize for mobile
@@ -53,7 +53,7 @@ export default function ManageQuizzesPage() {
   const toggleDarkMode = () => {
     setDarkMode(prev => {
       const newValue = !prev;
-      localStorage.setItem("darkMode", JSON.stringify(newValue));
+      setMeta('darkMode', JSON.stringify(newValue)).catch(() => {});
       return newValue;
     });
   };
@@ -69,85 +69,126 @@ export default function ManageQuizzesPage() {
     sidebarText: darkMode ? '#ffffff' : '#1a1a1a'
   };
 
-  const currentUser = JSON.parse(localStorage.getItem("currentUser")) || { name: "Student", email: "student@example.com" };
+  const [currentUser, setCurrentUser] = useState({ name: "Student", email: "student@example.com" });
+  useEffect(()=>{
+    let mounted = true;
+    (async ()=>{
+      try{ const u = await getCurrentUser(); if (mounted && u) setCurrentUser(u); }catch(e){}
+    })();
+    return ()=>{ mounted = false };
+  },[]);
 
   const handleLogout = () => {
-    localStorage.removeItem("currentUser");
+    removeCurrentUser().catch(() => {});
     navigate("/login");
   };
 
-  const availableQuizzes = [
-    {
-      id: 3,
-      title: "Quiz 3: Interface Design & Usability",
-      description: "Description description description description description description",
-      items: 20,
-      timeLimit: "1 hour",
-      dueDate: "Today, 11:59 PM",
-      attemptsAllowed: 1,
-      status: "available"
-    },
-    {
-      id: 4,
-      title: "Quiz 4: React Fundamentals",
-      description: "Test your knowledge of React core concepts and hooks",
-      items: 20,
-      timeLimit: "1 hour",
-      dueDate: "Dec 20, 23:59",
-      attemptsAllowed: 1,
-      status: "available"
-    },
-    {
-      id: 5,
-      title: "Quiz 5: React Advanced Concept",
-      description: "Advanced React patterns and performance optimization",
-      items: 20,
-      timeLimit: "1 hour",
-      dueDate: "Dec 25, 23:59",
-      attemptsAllowed: 1,
-      status: "available"
-    }
-  ];
+  // Quizzes will be fetched from backend
+  const [availableQuizzes, setAvailableQuizzes] = useState([]);
 
-  const submittedQuizzes = [
-    {
-      id: 2,
-      title: "Quiz 2: Requirements Engineering",
-      items: 5,
-      timeLimit: "10 mins",
-      dueDate: "Dec 8, 23:59",
-      attemptsAllowed: 0,
-      status: "submitted"
-    },
-    {
-      id: 1,
-      title: "Quiz 1: Intro To Web App",
-      items: 10,
-      timeLimit: "1 hour",
-      dueDate: "Dec 1, 23:59",
-      attemptsAllowed: 0,
-      status: "submitted"
-    }
-  ];
+  // Submitted quizzes will be fetched from backend
+  const [submittedQuizzes, setSubmittedQuizzes] = useState([]);
+
+  // Filter available quizzes to exclude submitted ones
+  const filteredAvailableQuizzes = availableQuizzes.filter(quiz => 
+    !submittedQuizzes.some(submitted => submitted.id === quiz.id)
+  );
+  // Fetch quizzes from backend on mount; prefer local IndexedDB and background-refresh
+  useEffect(() => {
+    const fetchAvailable = async () => {
+      // Try local first
+      try {
+        const local = await getAllQuizzes().catch(() => []);
+        if (Array.isArray(local) && local.length > 0) {
+          setAvailableQuizzes(local);
+        }
+      } catch (localErr) {
+        console.warn('[ManageQuizzesPage] failed to read local quizzes', localErr);
+      }
+
+      // Background refresh from backend and persist to IDB
+      try {
+        const resp = await fetchWithAuth('/api/quizzes/available.php');
+        const data = resp.data ?? (await resp.json().catch(() => null));
+        if (resp.ok && data) {
+          const arr = Array.isArray(data) ? data : (data?.quizzes || data?.data || []);
+          setAvailableQuizzes(arr);
+          try { arr.forEach(q => putQuiz({ ...q, id: q?.id ?? q?._id ?? q?.quiz_id ?? Date.now() })); } catch(e){}
+        }
+      } catch (err) {
+        console.error('[ManageQuizzesPage] remote load available quizzes error', err);
+      }
+    };
+
+    const fetchSubmitted = async () => {
+      try {
+        const resp = await fetchWithAuth('/api/quizzes/submitted');
+        const data = resp.data ?? (await resp.json().catch(() => null));
+        const submissions = Array.isArray(data) ? data : (data?.submissions || data?.data || []);
+        const mySubmissions = submissions.filter(s => s.studentEmail === (user?.email) || s.email === (user?.email));
+        const submittedQuizIds = [...new Set(mySubmissions.map(s => s.quiz_id))];
+        const submittedQuizzes = await Promise.all(submittedQuizIds.map(id => getQuiz(id).catch(() => null)));
+        setSubmittedQuizzes(submittedQuizzes.filter(Boolean));
+      } catch (err) {
+        console.error('[ManageQuizzesPage] load submitted quizzes error', err);
+        setSubmittedQuizzes([]);
+      }
+    };
+
+    fetchAvailable();
+    fetchSubmitted();
+
+    const handleStorage = (e) => {
+      if (!e) return;
+      if (e.key === 'quizzesUpdatedAt') {
+        fetchAvailable();
+        fetchSubmitted();
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
 
   const handleAttemptQuiz = (quizId) => {
-    if (user) {
-      const completedQuizzes = JSON.parse(localStorage.getItem("completedQuizzes") || "{}");
-      if (completedQuizzes[user.email]) {
-        showToast("You have already taken this quiz. Please wait for the instructor to release your score.", "warning");
-        return;
+    // Prefer server-side submission check; fall back to localStorage
+    (async () => {
+      try {
+        // submittedQuizzes is fetched on mount; prefer that
+        const hasSubmitted = submittedQuizzes.some(s => s.id === quizId);
+        if (hasSubmitted) {
+          showToast("You have already taken this quiz. Please wait for the instructor to release your score.", "warning");
+          return;
+        }
+        navigate("/student/quiz");
+      } catch (err) {
+        const completedRaw = await getMeta('completedQuizzes').catch(()=>null);
+        const completedQuizzes = completedRaw ? JSON.parse(completedRaw) : {};
+        if (completedQuizzes[user?.email]) {
+          showToast("You have already taken this quiz. Please wait for the instructor to release your score.", "warning");
+          return;
+        }
+        navigate("/student/quiz");
       }
-    }
-    navigate("/student/quiz");
+    })();
   };
 
   const handleViewResult = (quizId) => {
-    const resultsReleased = localStorage.getItem("resultsReleased") === "true";
-    if (resultsReleased) {
-      navigate("/student/result");
-    } else {
-      navigate("/student/result-pending");
-    }
+    (async () => {
+      try {
+        const resp = await fetchWithAuth('/api/quizzes/results');
+        const data = resp.data ?? (await resp.json().catch(() => null));
+        const results = Array.isArray(data) ? data : (data?.results || data?.data || []);
+        const released = results.length > 0;
+        if (released) navigate('/student/result');
+        else navigate('/student/result-pending');
+      } catch (err) {
+        const resultsRaw = await getMeta('resultsReleased').catch(()=>null);
+        const resultsReleased = resultsRaw === 'true' || resultsRaw === true;
+        if (resultsReleased) navigate('/student/result');
+        else navigate('/student/result-pending');
+      }
+    })();
   };
 
   if (!user) {
@@ -437,146 +478,6 @@ export default function ManageQuizzesPage() {
             >
               {darkMode ? '☀️' : '🌙'}
             </button>
-
-            {/* Profile Icon with Dropdown */}
-            <div style={{ position: 'relative' }}>
-              <button 
-                onClick={() => setShowProfileMenu(!showProfileMenu)}
-                style={{
-                  width: isMobile ? '36px' : '40px',
-                  height: isMobile ? '36px' : '40px',
-                  borderRadius: '50%',
-                  backgroundColor: theme.text,
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: theme.background,
-                  fontSize: isMobile ? '16px' : '20px',
-                  transition: 'transform 0.2s'
-                }}
-                onMouseEnter={(e) => e.target.style.transform = 'scale(1.1)'}
-                onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
-              >👤</button>
-              
-              {/* Profile Dropdown */}
-              {showProfileMenu && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  right: 0,
-                  marginTop: '8px',
-                  backgroundColor: theme.card,
-                  borderRadius: '12px',
-                  boxShadow: darkMode ? '0 8px 24px rgba(0,0,0,0.5)' : '0 8px 24px rgba(0,0,0,0.15)',
-                  width: '220px',
-                  zIndex: 1000,
-                  animation: 'scaleIn 0.2s ease-out',
-                  overflow: 'hidden',
-                  transition: 'background-color 0.3s ease'
-                }}>
-                  <div style={{
-                    padding: '16px',
-                    borderBottom: `1px solid ${theme.border}`,
-                    backgroundColor: darkMode ? '#3d3d3d' : '#f9f9f9'
-                  }}>
-                    <div style={{ fontSize: '16px', fontWeight: '700', color: theme.text, marginBottom: '4px', fontFamily: 'var(--font-heading)', transition: 'color 0.3s ease' }}>
-                      {currentUser?.name || 'Student'}
-                    </div>
-                    <div style={{ fontSize: '13px', color: theme.textSecondary, fontFamily: 'var(--font-body)', transition: 'color 0.3s ease' }}>
-                      {currentUser?.email}
-                    </div>
-                  </div>
-                  
-                  <button
-                    onClick={() => {
-                      setShowProfileMenu(false);
-                      navigate("/student/profile");
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      border: 'none',
-                      background: 'none',
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      color: theme.text,
-                      transition: 'background-color 0.2s',
-                      fontFamily: 'var(--font-body)'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                  >
-                    <span>👤</span>
-                    <span>My Profile</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setShowProfileMenu(false);
-                      navigate("/student/dashboard");
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      border: 'none',
-                      background: 'none',
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      color: theme.text,
-                      transition: 'background-color 0.2s',
-                      fontFamily: 'var(--font-body)'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                  >
-                    <span>📊</span>
-                    <span>Dashboard</span>
-                  </button>
-
-                  <div style={{ borderTop: `1px solid ${theme.border}` }}>
-                    <button
-                      onClick={() => {
-                        setShowProfileMenu(false);
-                        handleLogout();
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '12px 16px',
-                        border: 'none',
-                        background: 'none',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        color: '#DC2626',
-                        transition: 'background-color 0.2s',
-                        fontFamily: 'var(--font-body)'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                    >
-                      <span>🚪</span>
-                      <span>Log Out</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
         </header>
 
@@ -653,7 +554,7 @@ export default function ManageQuizzesPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                   {activeTab === "available" ? (
                     <>
-                      {availableQuizzes.map(quiz => (
+                      {filteredAvailableQuizzes.map(quiz => (
                         <div key={quiz.id} style={{
                           backgroundColor: theme.card,
                           borderRadius: '18px',

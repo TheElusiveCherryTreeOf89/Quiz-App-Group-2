@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ResultDetailsModal from "../components/Student/ResultDetailsModal";
 import { useToastContext } from "../App";
+import { fetchWithAuth } from "../utils/api";
+import { setMeta, removeCurrentUser, getCurrentUser, getMeta } from "../utils/db";
 
 export default function MyResultPage() {
   const navigate = useNavigate();
@@ -12,36 +14,35 @@ export default function MyResultPage() {
   const [selectedQuiz, setSelectedQuiz] = useState(null);
   const [showResultModal, setShowResultModal] = useState(false);
   const [darkMode, setDarkMode] = useState(() => {
-    const saved = localStorage.getItem("darkMode");
-    return saved ? JSON.parse(saved) : false;
+    return false;
   });
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pageLoaded, setPageLoaded] = useState(false);
 
   useEffect(() => {
-    try {
-      const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
-      if (!currentUser || currentUser.role !== "student") {
+    (async ()=>{
+      try{
+        const currentUser = await getCurrentUser().catch(()=>null);
+        if (!currentUser || currentUser.role !== "student") {
+          navigate("/login");
+          return;
+        }
+        setUser(currentUser);
+        // Trigger page load animation
+        setTimeout(() => setPageLoaded(true), 50);
+      }catch(e){
         navigate("/login");
-        return;
       }
-      setUser(currentUser);
-      
-      // Trigger page load animation
-      setTimeout(() => setPageLoaded(true), 50);
-    } catch (error) {
-      navigate("/login");
-    }
+    })();
   }, [navigate]);
 
   // Load dark mode preference
   useEffect(() => {
-    const saved = localStorage.getItem("darkMode");
-    if (saved) {
-      setDarkMode(JSON.parse(saved));
-    }
+    (async ()=>{
+      const raw = await getMeta('darkMode').catch(()=>null);
+      if (raw) setDarkMode(JSON.parse(raw));
+    })();
   }, []);
 
   // Handle window resize for mobile
@@ -61,7 +62,7 @@ export default function MyResultPage() {
   const toggleDarkMode = () => {
     setDarkMode(prev => {
       const newValue = !prev;
-      localStorage.setItem("darkMode", JSON.stringify(newValue));
+      setMeta('darkMode', JSON.stringify(newValue)).catch(() => {});
       return newValue;
     });
   };
@@ -77,33 +78,59 @@ export default function MyResultPage() {
     sidebarText: darkMode ? '#ffffff' : '#1a1a1a'
   };
 
-  const currentUser = JSON.parse(localStorage.getItem("currentUser")) || { name: "Student", email: "student@example.com" };
+  const [currentUser, setCurrentUser] = useState({ name: "Student", email: "student@example.com" });
+  useEffect(()=>{ let mounted=true; (async ()=>{ try{ const u = await getCurrentUser().catch(()=>null); if(mounted && u) setCurrentUser(u); }catch(e){} })(); return ()=>{mounted=false} },[]);
 
   const handleLogout = () => {
-    localStorage.removeItem("currentUser");
+    removeCurrentUser().catch(() => {});
     navigate("/login");
   };
 
   const handleAttemptQuiz = (quizId) => {
-    if (user) {
-      const completedQuizzes = JSON.parse(localStorage.getItem("completedQuizzes") || "{}");
-      if (completedQuizzes[user.email]) {
-        showToast("You have already taken this quiz. Please wait for the instructor to release your score.", "warning");
-        return;
+    (async () => {
+      try {
+        const hasSubmitted = submittedQuizzes.some(s => s.studentEmail === (user?.email) || s.email === (user?.email));
+        if (hasSubmitted) {
+          showToast("You have already taken this quiz. Please wait for the instructor to release your score.", "warning");
+          return;
+        }
+        navigate('/student/quiz');
+      } catch (err) {
+        const completedRaw = await getMeta('completedQuizzes').catch(()=>null);
+        const completedQuizzes = completedRaw ? JSON.parse(completedRaw) : {};
+        if (completedQuizzes[user.email]) {
+          showToast("You have already taken this quiz. Please wait for the instructor to release your score.", "warning");
+          return;
+        }
+        navigate('/student/quiz');
       }
-    }
-    navigate("/student/quiz");
+    })();
   };
 
   const handleViewResult = (quiz) => {
-    // Check if results are released
-    const resultsReleased = localStorage.getItem("resultsReleased") === "true";
-    if (resultsReleased) {
-      setSelectedQuiz(quiz);
-      setShowResultModal(true);
-    } else {
-      navigate("/student/result-pending");
-    }
+    (async () => {
+      try {
+        const resp = await fetchWithAuth('/api/quizzes/results');
+        const data = resp.data ?? (await resp.json().catch(() => null));
+        const results = Array.isArray(data) ? data : (data?.results || data?.data || []);
+        const released = results.length > 0;
+        if (released) {
+          setSelectedQuiz(quiz);
+          setShowResultModal(true);
+        } else {
+          navigate('/student/result-pending');
+        }
+      } catch (err) {
+        const resultsRaw = await getMeta('resultsReleased').catch(()=>null);
+        const resultsReleased = resultsRaw === 'true' || resultsRaw === true;
+        if (resultsReleased) {
+          setSelectedQuiz(quiz);
+          setShowResultModal(true);
+        } else {
+          navigate('/student/result-pending');
+        }
+      }
+    })();
   };
 
   const handleMenuClick = (menuId) => {
@@ -115,63 +142,35 @@ export default function MyResultPage() {
     else if (menuId === "notifications") navigate("/student/notifications");
   };
 
-  // Sample quiz data
-  const availableQuizzes = [
-    {
-      id: 1,
-      title: "Quiz 3: Interface Design & Usability",
-      items: 20,
-      timeLimit: "1 hour",
-      attempts: "1 attempt only",
-      dueDate: "Today, 23:59",
-      isUrgent: true
-    },
-    {
-      id: 2,
-      title: "Quiz 4: React Fundamentals",
-      items: 20,
-      timeLimit: "1 hour",
-      attempts: "1 attempt only",
-      dueDate: "Dec 20, 23:59",
-      isUrgent: false
-    },
-    {
-      id: 3,
-      title: "Quiz 5: React Advanced Concept",
-      items: 20,
-      timeLimit: "1 hour",
-      attempts: "1 attempt only",
-      dueDate: "Dec 25, 23:59",
-      isUrgent: false
-    }
-  ];
+  // Quizzes will be fetched from backend
+  const [availableQuizzes, setAvailableQuizzes] = useState([]);
 
-  const submittedQuizzes = [
-    {
-      id: 101,
-      title: "Quiz 2: Requirements Engineering",
-      items: 5,
-      timeLimit: "10 mins",
-      submittedDate: "Dec 8, 2024",
-      score: 4,
-      totalQuestions: 5,
-      percentage: 80,
-      passed: true,
-      status: "Released"
-    },
-    {
-      id: 102,
-      title: "Quiz 1: Intro To Web App",
-      items: 10,
-      timeLimit: "1 hour",
-      submittedDate: "Dec 1, 2024",
-      score: 9,
-      totalQuestions: 10,
-      percentage: 90,
-      passed: true,
-      status: "Released"
-    }
-  ];
+  // Submitted quizzes/results will be fetched from backend
+  const [submittedQuizzes, setSubmittedQuizzes] = useState([]);
+  // Fetch quizzes/results from backend on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await fetchWithAuth('/api/quizzes/available.php');
+        const data = resp.data ?? (await resp.json().catch(() => null));
+        setAvailableQuizzes(Array.isArray(data) ? data : (data?.quizzes || data?.data || []));
+      } catch (err) {
+        console.error('[MyResultPage] load available quizzes error', err);
+        setAvailableQuizzes([]);
+      }
+    })();
+
+    (async () => {
+      try {
+        const resp = await fetchWithAuth('/api/quizzes/results');
+        const data = resp.data ?? (await resp.json().catch(() => null));
+        setSubmittedQuizzes(Array.isArray(data) ? data : (data?.results || data?.data || []));
+      } catch (err) {
+        console.error('[MyResultPage] load results error', err);
+        setSubmittedQuizzes([]);
+      }
+    })();
+  }, []);
 
   if (!user) {
     return (
@@ -464,145 +463,6 @@ export default function MyResultPage() {
             >
               {darkMode ? '☀️' : '🌙'}
             </button>
-            
-            {/* Profile Icon with Dropdown */}
-            <div style={{ position: 'relative' }}>
-              <button 
-                onClick={() => setShowProfileMenu(!showProfileMenu)}
-                style={{
-                  width: isMobile ? '36px' : '40px',
-                  height: isMobile ? '36px' : '40px',
-                  borderRadius: '50%',
-                  backgroundColor: 'black',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'white',
-                  fontSize: isMobile ? '16px' : '20px',
-                  transition: 'transform 0.2s'
-                }}
-                onMouseEnter={(e) => e.target.style.transform = 'scale(1.1)'}
-                onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
-              >👤</button>
-              
-              {/* Profile Dropdown */}
-              {showProfileMenu && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  right: 0,
-                  marginTop: '8px',
-                  backgroundColor: theme.card,
-                  borderRadius: '12px',
-                  boxShadow: darkMode ? '0 8px 24px rgba(0,0,0,0.5)' : '0 8px 24px rgba(0,0,0,0.15)',
-                  width: '220px',
-                  zIndex: 1000,
-                  overflow: 'hidden',
-                  transition: 'background-color 0.3s ease'
-                }}>
-                  <div style={{
-                    padding: '16px',
-                    borderBottom: `1px solid ${theme.border}`,
-                    backgroundColor: darkMode ? '#3d3d3d' : '#f9f9f9'
-                  }}>
-                    <div style={{ fontSize: '16px', fontWeight: '700', color: theme.text, marginBottom: '4px', fontFamily: 'var(--font-heading)', transition: 'color 0.3s ease' }}>
-                      {currentUser?.name || 'Student'}
-                    </div>
-                    <div style={{ fontSize: '13px', color: theme.textSecondary, fontFamily: 'var(--font-body)', transition: 'color 0.3s ease' }}>
-                      {currentUser?.email}
-                    </div>
-                  </div>
-                  
-                  <button
-                    onClick={() => {
-                      setShowProfileMenu(false);
-                      navigate("/student/profile");
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      border: 'none',
-                      background: 'none',
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      color: theme.text,
-                      transition: 'background-color 0.2s',
-                      fontFamily: 'var(--font-body)'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                  >
-                    <span>👤</span>
-                    <span>My Profile</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setShowProfileMenu(false);
-                      navigate("/student/dashboard");
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      border: 'none',
-                      background: 'none',
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      color: theme.text,
-                      transition: 'background-color 0.2s',
-                      fontFamily: 'var(--font-body)'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                  >
-                    <span>📊</span>
-                    <span>Dashboard</span>
-                  </button>
-
-                  <div style={{ borderTop: `1px solid ${theme.border}` }}>
-                    <button
-                      onClick={() => {
-                        setShowProfileMenu(false);
-                        handleLogout();
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '12px 16px',
-                        border: 'none',
-                        background: 'none',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        color: '#DC2626',
-                        transition: 'background-color 0.2s',
-                        fontFamily: 'var(--font-body)'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                    >
-                      <span>🚪</span>
-                      <span>Log Out</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
         </header>
 

@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToastContext } from "../App";
+import { fetchWithAuth, getAuthToken, getAuthTokenAsync } from "../utils/api";
+import { setMeta, setCurrentUser as setCurrentUserMeta, removeCurrentUser, removeToken, getCurrentUser, getMeta } from "../utils/db";
 import logo from "../assets/1.svg";
 
 export default function InstructorProfilePage() {
@@ -23,6 +25,8 @@ export default function InstructorProfilePage() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [instructorQuizzes, setInstructorQuizzes] = useState([]);
+  const [instructorSubmissions, setInstructorSubmissions] = useState([]);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [selectedAvatar, setSelectedAvatar] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
@@ -40,41 +44,98 @@ export default function InstructorProfilePage() {
   }, []);
 
   useEffect(() => {
-    try {
-      const user = JSON.parse(localStorage.getItem("currentUser") || "null");
-      if (!user || user.role !== "instructor") {
+    const loadProfileData = async () => {
+      try {
+        const user = await getCurrentUser().catch(()=>null);
+        if (!user || user.role !== "instructor") {
+          navigate("/instructor/login");
+          return;
+        }
+        setCurrentUser(user);
+
+        // Check token before calling API (fast localStorage path, fallback to IndexedDB)
+        const token = getAuthToken() || await getAuthTokenAsync();
+        if (!token) {
+          console.warn('[InstructorProfilePage] No auth token found, redirecting to login');
+          navigate('/instructor/login');
+          return;
+        }
+
+        // Load profile from API
+        const response = await fetchWithAuth('/api/instructor/profile.php');
+
+        if (response.ok) {
+          const profileData = response.data ?? (await response.json());
+          setProfileData({
+            name: profileData.name || user.name || "Instructor Name",
+            email: user.email,
+            employeeId: profileData.employeeId || user.employeeId || "EMP-2024-001",
+            department: profileData.department || user.department || "Computer Science",
+            title: profileData.title || user.title || "Professor",
+            bio: profileData.bio || user.bio || "Dedicated educator passionate about student success.",
+          });
+        } else {
+          // Fallback to user data
+          setProfileData({
+            name: user.name || "Instructor Name",
+            email: user.email,
+            employeeId: user.employeeId || "EMP-2024-001",
+            department: user.department || "Computer Science",
+            title: user.title || "Professor",
+            bio: user.bio || "Dedicated educator passionate about student success.",
+          });
+        }
+
+        // Load notifications (from IndexedDB)
+        const rawNotifs = await getMeta('instructorNotifications').catch(()=>null);
+        setNotifications(rawNotifs ? JSON.parse(rawNotifs) : []);
+
+        // Load dark mode preference
+        const rawDark = await getMeta('darkMode').catch(()=>null);
+        setDarkMode(rawDark === 'true' || rawDark === true);
+
+        // Load saved avatar if present
+        const rawAvatar = await getMeta('instructorAvatar').catch(()=>null);
+        if (rawAvatar) setAvatarPreview(rawAvatar);
+
+        // Load instructor quizzes
+        (async () => {
+          try {
+            const qResp = await fetchWithAuth('/api/instructor/get-quizzes.php');
+            const qData = qResp.data ?? (await qResp.json().catch(() => null));
+            const quizzes = Array.isArray(qData) ? qData : (qData?.quizzes || qData?.data || []);
+            setInstructorQuizzes(quizzes);
+          } catch (err) {
+            console.warn('[InstructorProfilePage] failed to load instructor quizzes, falling back to localStorage', err);
+            const rawQ = await getMeta('instructorQuizzes').catch(()=>null);
+            setInstructorQuizzes(rawQ ? JSON.parse(rawQ) : []);
+          }
+
+          try {
+            const sResp = await fetchWithAuth('/api/instructor/submissions.php');
+            const sData = sResp.data ?? (await sResp.json().catch(() => null));
+            const submissions = Array.isArray(sData) ? sData : (sData?.submissions || sData?.data || []);
+            setInstructorSubmissions(submissions);
+          } catch (err) {
+            console.warn('[InstructorProfilePage] failed to load submissions, falling back to localStorage', err);
+            const rawS = await getMeta('quizResults').catch(()=>null);
+            setInstructorSubmissions(rawS ? JSON.parse(rawS) : []);
+          }
+
+          setTimeout(() => setPageLoaded(true), 50);
+        })();
+      } catch (error) {
+        console.error('Load profile error:', error);
         navigate("/instructor/login");
-        return;
       }
-      setCurrentUser(user);
-      
-      // Load saved profile or use defaults
-      const savedProfile = JSON.parse(localStorage.getItem("instructorProfile") || "{}");
-      setProfileData({
-        name: savedProfile.name || user.name || "Instructor Name",
-        email: user.email,
-        employeeId: savedProfile.employeeId || user.employeeId || "EMP-2024-001",
-        department: savedProfile.department || user.department || "Computer Science",
-        title: savedProfile.title || user.title || "Professor",
-        bio: savedProfile.bio || user.bio || "Dedicated educator passionate about student success.",
-      });
-      
-      // Load notifications
-      const savedNotifications = JSON.parse(localStorage.getItem("instructorNotifications") || "[]");
-      setNotifications(savedNotifications);
-      
-      // Load dark mode preference
-      const savedDarkMode = localStorage.getItem("darkMode") === "true";
-      setDarkMode(savedDarkMode);
-      
-      setTimeout(() => setPageLoaded(true), 50);
-    } catch (error) {
-      navigate("/instructor/login");
-    }
+    };
+
+    loadProfileData();
   }, [navigate]);
 
   const handleLogout = () => {
-    localStorage.removeItem("currentUser");
+    removeCurrentUser().catch(()=>{});
+    removeToken().catch(()=>{});
     navigate("/instructor/login");
   };
 
@@ -91,19 +152,19 @@ export default function InstructorProfilePage() {
   const toggleDarkMode = () => {
     const newMode = !darkMode;
     setDarkMode(newMode);
-    localStorage.setItem("darkMode", newMode.toString());
+    setMeta('darkMode', newMode.toString()).catch(()=>{});
     showToast(`Dark mode ${newMode ? 'enabled' : 'disabled'}`, "info");
   };
 
   const markNotificationAsRead = (id) => {
     const updated = notifications.map(n => n.id === id ? { ...n, read: true } : n);
     setNotifications(updated);
-    localStorage.setItem("instructorNotifications", JSON.stringify(updated));
+    setMeta('instructorNotifications', JSON.stringify(updated)).catch(()=>{});
   };
 
   const clearAllNotifications = () => {
     setNotifications([]);
-    localStorage.setItem("instructorNotifications", "[]");
+    setMeta('instructorNotifications', JSON.stringify([])).catch(()=>{});
     showToast("All notifications cleared", "success");
     setShowNotifications(false);
   };
@@ -128,13 +189,34 @@ export default function InstructorProfilePage() {
     }
   };
 
-  const handleSaveAvatar = () => {
+  const handleSaveAvatar = async () => {
     if (avatarPreview) {
-      localStorage.setItem("instructorAvatar", avatarPreview);
-      showToast("Avatar updated successfully!", "success");
-      setShowAvatarModal(false);
-      setSelectedAvatar(null);
-      setAvatarPreview(null);
+      try {
+        const token2 = getAuthToken() || await getAuthTokenAsync();
+        if (!token2) {
+          console.warn('[InstructorProfilePage] No auth token found for avatar upload');
+          showToast('You must be logged in to update avatar', 'error');
+          return;
+        }
+
+        const response = await fetchWithAuth('/api/instructor/profile-avatar.php', {
+          method: 'PUT',
+          body: JSON.stringify({ avatar: avatarPreview })
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to save avatar');
+        }
+
+        await setMeta('instructorAvatar', avatarPreview).catch(()=>{});
+        showToast("Avatar updated successfully!", "success");
+        setShowAvatarModal(false);
+        setSelectedAvatar(null);
+        setAvatarPreview(null);
+      } catch (error) {
+        console.error('Save avatar error:', error);
+        showToast("Failed to save avatar. Please try again.", "error");
+      }
     }
   };
 
@@ -144,7 +226,7 @@ export default function InstructorProfilePage() {
     setAvatarPreview(null);
   };
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     try {
       // Validation
       if (!profileData.name || profileData.name.trim() === "") {
@@ -175,21 +257,46 @@ export default function InstructorProfilePage() {
         title: profileData.title.trim(),
         bio: profileData.bio.trim()
       };
-      localStorage.setItem("instructorProfile", JSON.stringify(profileToSave));
-      
-      // Also update currentUser
-      const updatedUser = { ...currentUser, ...profileToSave };
-      localStorage.setItem("currentUser", JSON.stringify(updatedUser));
+
+      const token3 = getAuthToken() || await getAuthTokenAsync();
+      if (!token3) {
+        console.warn('[InstructorProfilePage] No auth token found for profile save');
+        showToast('You must be logged in to save profile', 'error');
+        return;
+      }
+
+      const response = await fetchWithAuth('/api/instructor/profile.php', {
+        method: 'PUT',
+        body: JSON.stringify(profileToSave)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save profile');
+      }
+
+      const updatedProfile = response.data ?? (await response.json());
+
+      // Update local state
+      setProfileData({
+        ...profileData,
+        ...updatedProfile
+      });
+
+      // Also update currentUser in-memory and persist to IndexedDB
+      const updatedUser = { ...currentUser, ...updatedProfile };
       setCurrentUser(updatedUser);
+      setCurrentUserMeta(updatedUser).catch(()=>{});
       setIsEditing(false);
       showToast("Profile updated successfully!", "success");
     } catch (error) {
+      console.error('Save profile error:', error);
       showToast("Failed to save profile. Please try again.", "error");
     }
   };
 
-  const handleCancelEdit = () => {
-    const savedProfile = JSON.parse(localStorage.getItem("instructorProfile") || "{}");
+  const handleCancelEdit = async () => {
+    const savedRaw = await getMeta('instructorProfile').catch(()=>null);
+    const savedProfile = savedRaw ? JSON.parse(savedRaw) : {};
     setProfileData({
       name: savedProfile.name || currentUser?.name || "Instructor Name",
       email: currentUser?.email || "",
@@ -203,14 +310,14 @@ export default function InstructorProfilePage() {
 
   // Calculate teaching stats
   const getStats = () => {
-    const quizzes = JSON.parse(localStorage.getItem("instructorQuizzes") || "[]");
-    const submissions = JSON.parse(localStorage.getItem("quizResults") || "[]");
-    
+    const quizzes = instructorQuizzes || [];
+    const submissions = instructorSubmissions || [];
+
     const totalQuizzes = quizzes.length;
-    const uniqueStudents = new Set(submissions.map(s => s.studentEmail)).size;
-    const totalQuestions = quizzes.reduce((acc, q) => acc + (q.questions?.length || 0), 0);
-    const avgScore = submissions.length > 0
-      ? submissions.reduce((acc, s) => acc + (s.score / s.totalQuestions * 100), 0) / submissions.length
+    const uniqueStudents = new Set((submissions || []).map(s => s.studentEmail)).size;
+    const totalQuestions = (quizzes || []).reduce((acc, q) => acc + (q.questions?.length || 0), 0);
+    const avgScore = (submissions && submissions.length > 0)
+      ? submissions.reduce((acc, s) => acc + (s.score / (s.totalQuestions || 1) * 100), 0) / submissions.length
       : 0;
 
     return { totalQuizzes, uniqueStudents, totalQuestions, avgScore };
@@ -241,7 +348,7 @@ export default function InstructorProfilePage() {
     inputBorder: '#e0e0e0'
   };
   
-  const savedAvatar = localStorage.getItem("instructorAvatar");
+  const savedAvatar = null;
 
   return (
     <div style={{ 

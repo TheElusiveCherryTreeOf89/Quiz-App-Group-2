@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
+import logo from "../assets/1.svg";
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -72,20 +73,15 @@ export default function LandingPage() {
           gap: '12px'
         }}>
           {/* Logo */}
-          <div style={{
-            backgroundColor: 'white',
-            padding: isMobile ? '8px 16px' : '10px 24px',
-            borderRadius: '25px',
-            border: '3px solid black',
-            fontWeight: '900',
-            fontSize: isMobile ? '16px' : '22px',
-            color: '#1a1a1a',
-            cursor: 'pointer'
-          }}
-          onClick={() => navigate("/")}
-          >
-            QuizApp
-          </div>
+          <img
+            src={logo}
+            alt="QuizApp Logo"
+            style={{
+              height: isMobile ? '64px' : '80px',
+              cursor: 'pointer'
+            }}
+            onClick={() => navigate("/")}
+          />
 
           {/* Login Buttons */}
           <div style={{ display: 'flex', gap: isMobile ? '8px' : '12px', alignItems: 'center' }}>
@@ -471,6 +467,180 @@ export default function LandingPage() {
             >
               Sign In
             </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Development Team Section */}
+      <section style={{
+        backgroundColor: '#f8f9fa',
+        padding: '80px 32px',
+        textAlign: 'center'
+      }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+          <h2 style={{
+            fontSize: '42px',
+            fontWeight: '900',
+            color: '#1a1a1a',
+            margin: '0 0 16px 0'
+          }}>
+            Meet Our Development Team
+          </h2>
+          <p style={{
+            fontSize: '18px',
+            color: '#666',
+            margin: '0 0 60px 0',
+            lineHeight: '1.6'
+          }}>
+            The talented team behind QuizApp - DCIT 26 Final Project
+          </p>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: '32px',
+            marginBottom: '40px'
+          }}>
+            {[
+              {
+                name: "Von Zymon Raphael B. Patagnan",
+                role: "Lead Developer / Full-Stack",
+                image: "/assets/devteam_pics/Vonzymon.png",
+                responsibilities: "Overall architecture, backend integration, state management, Git workflow management"
+              },
+              {
+                name: "Mary Strelline R. Magdamit",
+                role: "Lead Designer",
+                image: "/assets/devteam_pics/Strelline.jpg",
+                responsibilities: "UI/UX design, visual assets, branding, design system"
+              },
+              {
+                name: "John Benedict C. Paller",
+                role: "Backend & Debugging Specialist",
+                image: "/assets/devteam_pics/Benedict.jpeg",
+                responsibilities: "Backend logic, API integration, bug fixes, testing"
+              },
+              {
+                name: "Dianne F. Nataya",
+                role: "Documentation Lead",
+                image: "/assets/devteam_pics/Dianne.JPG",
+                responsibilities: "Technical documentation, README, user guides, project documentation"
+              },
+              {
+                name: "Lester C. Pajarillo",
+                role: "UX Specialist",
+                image: null,
+                responsibilities: "User experience optimization, usability testing, interface improvements"
+              },
+              {
+                name: "Sean Hanray Miguel",
+                role: "Backend & UX Support",
+                image: "/assets/devteam_pics/Sean.JPG",
+                responsibilities: "Backend assistance, user flow optimization, feature implementation"
+              },
+              {
+                name: "Rose Ann G. Niorales",
+                role: "UI & Documentation Support",
+                image: "/assets/devteam_pics/Sansan.jfif",
+                responsibilities: "Interface refinement, documentation assistance, content creation"
+              }
+            ].map((member, index) => (
+              <div
+                key={index}
+                style={{
+                  backgroundColor: 'white',
+                  borderRadius: '20px',
+                  padding: '32px 24px',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
+                  border: '1px solid #e5e7eb',
+                  transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                  cursor: 'default'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-8px)';
+                  e.currentTarget.style.boxShadow = '0 16px 48px rgba(0,0,0,0.15)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 8px 32px rgba(0,0,0,0.08)';
+                }}
+              >
+                <div style={{
+                  width: '120px',
+                  height: '120px',
+                  borderRadius: '50%',
+                  margin: '0 auto 20px',
+                  overflow: 'hidden',
+                  backgroundColor: member.image ? 'transparent' : '#f3f4f6',
+                  border: '4px solid #FF6B00',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  {member.image ? (
+                    <img
+                      src={member.image}
+                      alt={member.name}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover'
+                      }}
+                    />
+                  ) : (
+                    <span style={{
+                      fontSize: '48px',
+                      color: '#9ca3af'
+                    }}>
+                      👤
+                    </span>
+                  )}
+                </div>
+
+                <h3 style={{
+                  fontSize: '20px',
+                  fontWeight: '700',
+                  color: '#1a1a1a',
+                  margin: '0 0 8px 0'
+                }}>
+                  {member.name}
+                </h3>
+
+                <p style={{
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  color: '#FF6B00',
+                  margin: '0 0 16px 0'
+                }}>
+                  {member.role}
+                </p>
+
+                <p style={{
+                  fontSize: '14px',
+                  color: '#666',
+                  margin: 0,
+                  lineHeight: '1.5'
+                }}>
+                  {member.responsibilities}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <div style={{
+            backgroundColor: '#FF6B00',
+            padding: '24px 32px',
+            borderRadius: '16px',
+            display: 'inline-block'
+          }}>
+            <p style={{
+              fontSize: '16px',
+              fontWeight: '600',
+              color: 'white',
+              margin: 0
+            }}>
+              🎓 DCIT 26: Application Development and Emerging Technologies
+            </p>
           </div>
         </div>
       </section>

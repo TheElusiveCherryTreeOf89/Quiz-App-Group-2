@@ -15,6 +15,13 @@
 4. Click "Go"
 5. Should see: "quiz_app" database with 5 tables
 
+### ✅ Test 3: Registration API
+Tested via frontend, Postman, and test-suite.html:
+- Registration request sent to `/api/auth/register.php`
+- API response: `{ success: true, message: "Registration successful", user: { ... } }`
+- New user appears in phpMyAdmin users table
+- No errors in PHP logs
+
 ### ✅ Test 3: Login API
 Open Postman or use this PowerShell:
 ```powershell

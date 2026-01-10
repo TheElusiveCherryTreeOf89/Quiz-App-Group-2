@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { fetchWithAuth, getAuthToken } from "../utils/api";
 import { useToastContext } from "../App";
 import logo from "../assets/1.svg";
+import CreateQuizModal from "../components/Instructor/CreateQuizModal";
+import { getCurrentUser, getMeta, setMeta, removeCurrentUser, getAllQuizzes, putQuiz } from '../utils/db';
 
 export default function ManageInstructorQuizzesPage() {
   const navigate = useNavigate();
@@ -19,6 +22,8 @@ export default function ManageInstructorQuizzesPage() {
   const [notifications, setNotifications] = useState([]);
   const [user, setUser] = useState(null);
   const [pageLoaded, setPageLoaded] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingQuiz, setEditingQuiz] = useState(null);
 
   // Handle window resize for mobile responsiveness
   useEffect(() => {
@@ -32,42 +37,77 @@ export default function ManageInstructorQuizzesPage() {
   }, []);
 
   useEffect(() => {
-    try {
-      // Check authentication first
-      const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
-      if (!currentUser || currentUser.role !== "instructor") {
+    (async ()=>{
+      try{
+        const currentUser = await getCurrentUser().catch(()=>null);
+        if (!currentUser || currentUser.role !== "instructor") {
+          navigate("/instructor/login");
+          return;
+        }
+        setUser(currentUser);
+        loadQuizzes();
+
+        const rawNotifs = await getMeta('instructorNotifications').catch(()=>null);
+        setNotifications(rawNotifs ? JSON.parse(rawNotifs) : []);
+
+        const rawDark = await getMeta('darkMode').catch(()=>null);
+        setDarkMode(rawDark === 'true');
+
+        setTimeout(() => setPageLoaded(true), 50);
+      }catch(e){
         navigate("/instructor/login");
-        return;
       }
-      
-      setUser(currentUser);
-      loadQuizzes();
-      
-      // Load notifications
-      const savedNotifications = JSON.parse(localStorage.getItem("instructorNotifications") || "[]");
-      setNotifications(savedNotifications);
-      
-      // Load dark mode preference
-      const savedDarkMode = localStorage.getItem("darkMode") === "true";
-      setDarkMode(savedDarkMode);
-      
-      setTimeout(() => setPageLoaded(true), 50);
-    } catch (error) {
-      navigate("/instructor/login");
-    }
+    })();
   }, [navigate]);
 
-  const loadQuizzes = () => {
+  const loadQuizzes = async () => {
     try {
-      const savedQuizzes = JSON.parse(localStorage.getItem("instructorQuizzes") || "[]");
-      setQuizzes(savedQuizzes);
+      // Prefer local IndexedDB first for fast load and offline support
+      try {
+        const local = await getAllQuizzes().catch(()=>[]);
+        if (Array.isArray(local) && local.length > 0) {
+          const normalizedLocal = local.map((q, idx) => {
+            const fallbackId = `local-${idx}-${(q && q.title) ? q.title.slice(0,10).replace(/[^a-z0-9]/gi,'') : Date.now()}`;
+            const id = q?.id ?? q?._id ?? q?.quiz_id ?? fallbackId;
+            const questions = Array.isArray(q?.questions) ? q.questions : (Array.isArray(q?.items) ? q.items : []);
+            return { ...q, id, questions };
+          });
+          setQuizzes(normalizedLocal);
+        }
+      } catch (localErr) {
+        console.warn('[ManageInstructorQuizzesPage] failed to load local quizzes', localErr);
+      }
+
+      // Attempt to refresh from backend if available; merge into local DB
+      try {
+        const response = await fetchWithAuth('/api/instructor/get-quizzes.php');
+        const data = response.data ?? (await response.json().catch(() => null));
+        if (response.ok && data) {
+          const quizzesArray = Array.isArray(data) ? data : (data?.quizzes || data?.data || []);
+          const normalized = quizzesArray.map((q, idx) => {
+            const fallbackId = `remote-${idx}-${(q && q.title) ? q.title.slice(0,10).replace(/[^a-z0-9]/gi,'') : Date.now()}`;
+            const id = q?.id ?? q?._id ?? q?.quiz_id ?? fallbackId;
+            const questions = Array.isArray(q?.questions) ? q.questions : (Array.isArray(q?.items) ? q.items : []);
+            const norm = { ...q, id, questions };
+            // persist to IndexedDB for offline use
+            try { putQuiz(norm).catch(()=>{}); } catch(e){}
+            return norm;
+          });
+          setQuizzes(normalized);
+        }
+      } catch (remoteErr) {
+        console.warn('[ManageInstructorQuizzesPage] remote fetch failed, continuing with local quizzes', remoteErr);
+      }
     } catch (error) {
+      console.error('Load quizzes error:', error);
       setQuizzes([]);
+      showToast(error.message || "Failed to load quizzes. Please try again.", "error");
     }
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("currentUser");
+    removeCurrentUser().catch(()=>{});
+    // token removal handled elsewhere if needed
     navigate("/instructor/login");
   };
 
@@ -84,72 +124,153 @@ export default function ManageInstructorQuizzesPage() {
   const toggleDarkMode = () => {
     const newMode = !darkMode;
     setDarkMode(newMode);
-    localStorage.setItem("darkMode", newMode.toString());
+    setMeta('darkMode', newMode.toString()).catch(()=>{});
     showToast(`Dark mode ${newMode ? 'enabled' : 'disabled'}`, "info");
   };
 
   const markNotificationAsRead = (id) => {
     const updated = notifications.map(n => n.id === id ? { ...n, read: true } : n);
     setNotifications(updated);
-    localStorage.setItem("instructorNotifications", JSON.stringify(updated));
+    setMeta('instructorNotifications', JSON.stringify(updated)).catch(() => {});
   };
 
   const clearAllNotifications = () => {
     setNotifications([]);
-    localStorage.setItem("instructorNotifications", "[]");
+    setMeta('instructorNotifications', JSON.stringify([])).catch(() => {});
     showToast("All notifications cleared", "success");
     setShowNotifications(false);
   };
 
-  const handleDeleteQuiz = (quizId) => {
+  const handleDeleteQuiz = async (quizId) => {
     if (window.confirm("Are you sure you want to delete this quiz? This action cannot be undone.")) {
       try {
-        const updatedQuizzes = quizzes.filter(q => q.id !== quizId);
-        localStorage.setItem("instructorQuizzes", JSON.stringify(updatedQuizzes));
-        setQuizzes(updatedQuizzes);
+        const token = getAuthToken() || await getAuthTokenAsync();
+        if (!token) {
+          console.warn('[ManageInstructorQuizzesPage] No auth token found for delete');
+          showToast('You must be logged in to delete quizzes', 'error');
+          return;
+        }
+        const response = await fetchWithAuth('/api/instructor/delete-quiz.php', {
+          method: 'POST',
+          body: JSON.stringify({
+            quiz_id: quizId,
+            instructor_id: user?.id
+          })
+        });
+        if (!response.ok) {
+          throw new Error('Failed to delete quiz');
+        }
+        setQuizzes(quizzes.filter(q => q.id !== quizId));
         showToast("Quiz deleted successfully", "success");
+        try { localStorage.setItem('quizzesUpdatedAt', Date.now().toString()); } catch (e) { /* ignore */ }
       } catch (error) {
+        console.error('Delete quiz error:', error);
         showToast("Failed to delete quiz. Please try again.", "error");
       }
     }
   };
 
-  const handleToggleStatus = (quizId) => {
+  const handleToggleStatus = async (quizId) => {
     try {
-      const updatedQuizzes = quizzes.map(q => {
-        if (q.id === quizId) {
-          return { ...q, published: !q.published };
-        }
-        return q;
+      const quiz = quizzes.find(q => q.id === quizId);
+      if (!quiz) return;
+
+      const token2 = getAuthToken() || await getAuthTokenAsync();
+      if (!token2) {
+        console.warn('[ManageInstructorQuizzesPage] No auth token found for toggle status');
+        showToast('You must be logged in to update quizzes', 'error');
+        return;
+      }
+      const payload = {
+        quiz_id: quizId,
+        instructor_id: user?.id,
+        published: !quiz.published
+      };
+      // Debug: log payload for troubleshooting missing-field 400s
+      // eslint-disable-next-line no-console
+      console.debug('[ManageInstructorQuizzesPage] toggle payload:', payload);
+      const response = await fetchWithAuth('/api/instructor/edit-quiz.php', {
+        method: 'POST',
+        body: JSON.stringify(payload)
       });
-      localStorage.setItem("instructorQuizzes", JSON.stringify(updatedQuizzes));
-      setQuizzes(updatedQuizzes);
-      const quiz = updatedQuizzes.find(q => q.id === quizId);
-      showToast(`Quiz ${quiz.published ? 'published' : 'unpublished'} successfully`, "success");
+      if (!response.ok) {
+        // surface backend message when available
+        const errData = response.data ?? (await response.json().catch(() => null));
+        throw new Error(errData?.message || 'Failed to update quiz status');
+      }
+      const data = response.data ?? (await response.json());
+      // backend may return the updated quiz object directly or under `quiz`/`data`
+      const updatedQuizRaw = Array.isArray(data) ? data.find(d => d.id === quizId) : (data && (data.quiz || data || data.data));
+      const normalizedUpdated = {
+        ...(updatedQuizRaw || {}),
+        // ensure id stays stable (fallback to existing quiz id)
+        id: updatedQuizRaw?.id ?? quiz.id ?? quizId,
+        // ensure published reflects the intended change if backend didn't return it
+        published: (updatedQuizRaw && typeof updatedQuizRaw.published !== 'undefined') ? updatedQuizRaw.published : (payload?.published ?? !quiz.published),
+        questions: Array.isArray(updatedQuizRaw?.questions) ? updatedQuizRaw.questions : (Array.isArray(updatedQuizRaw?.items) ? updatedQuizRaw.items : (Array.isArray(quiz?.questions) ? quiz.questions : []))
+      };
+      setQuizzes(quizzes.map(q => q.id === quizId ? normalizedUpdated : q));
+      showToast(`Quiz ${normalizedUpdated.published ? 'published' : 'unpublished'} successfully`, "success");
+      try { setMeta('quizzesUpdatedAt', Date.now().toString()).catch(()=>{}); } catch (e) { /* ignore */ }
+      try { localStorage.setItem('quizzesUpdatedAt', Date.now().toString()); } catch (e) { /* ignore */ }
     } catch (error) {
+      console.error('Toggle status error:', error);
       showToast("Failed to update quiz status. Please try again.", "error");
     }
   };
 
-  const handleDuplicateQuiz = (quizId) => {
+  const handleDuplicateQuiz = async (quizId) => {
     try {
       const quizToDuplicate = quizzes.find(q => q.id === quizId);
       if (!quizToDuplicate) {
         showToast("Quiz not found!", "error");
         return;
       }
-      const newQuiz = {
+
+      // Deep clone the quiz to avoid reference sharing
+      const newQuizData = {
         ...quizToDuplicate,
-        id: Date.now(),
         title: quizToDuplicate.title + " (Copy)",
         published: false,
-        createdAt: new Date().toISOString()
+        questions: quizToDuplicate.questions ? JSON.parse(JSON.stringify(quizToDuplicate.questions)) : [],
+        items: quizToDuplicate.items ? JSON.parse(JSON.stringify(quizToDuplicate.items)) : []
       };
-      const updatedQuizzes = [...quizzes, newQuiz];
-      localStorage.setItem("instructorQuizzes", JSON.stringify(updatedQuizzes));
-      setQuizzes(updatedQuizzes);
+      delete newQuizData.id;
+      delete newQuizData.quiz_id;
+      delete newQuizData.createdAt;
+      delete newQuizData.localId;
+
+      const token3 = getAuthToken() || await getAuthTokenAsync();
+      if (!token3) {
+        console.warn('[ManageInstructorQuizzesPage] No auth token found for duplicate');
+        showToast('You must be logged in to duplicate quizzes', 'error');
+        return;
+      }
+      const response = await fetchWithAuth('/api/instructor/create-quiz.php', {
+        method: 'POST',
+        body: JSON.stringify({
+          ...newQuizData,
+          instructor_id: user?.id
+        })
+      });
+      if (!response.ok) {
+        throw new Error('Failed to duplicate quiz');
+      }
+      const data = response.data ?? (await response.json());
+      const newQuiz = data && (data.quiz || data || (Array.isArray(data) ? data[0] : null));
+      if (newQuiz) {
+        const normalizedNew = { 
+          ...(newQuiz || {}), 
+          questions: Array.isArray(newQuiz?.questions) ? newQuiz.questions : [],
+          items: Array.isArray(newQuiz?.items) ? newQuiz.items : []
+        };
+        setQuizzes(prev => [...prev, normalizedNew]);
+        // Save to IndexedDB for offline support
+        try { await putQuiz(normalizedNew); } catch(e) { console.warn('Failed to save duplicate to IDB', e); }
+      }
       showToast("Quiz duplicated successfully", "success");
     } catch (error) {
+      console.error('Duplicate quiz error:', error);
       showToast("Failed to duplicate quiz. Please try again.", "error");
     }
   };
@@ -181,57 +302,90 @@ export default function ManageInstructorQuizzesPage() {
     }
   };
 
-  const handleBulkDelete = () => {
+  const handleBulkDelete = async () => {
     if (window.confirm(`Are you sure you want to delete ${selectedQuizzes.length} quiz(zes)? This action cannot be undone.`)) {
       try {
-        const updatedQuizzes = quizzes.filter(q => !selectedQuizzes.includes(q.id));
-        localStorage.setItem("instructorQuizzes", JSON.stringify(updatedQuizzes));
-        setQuizzes(updatedQuizzes);
+        const deletePromises = selectedQuizzes.map(quizId =>
+          fetchWithAuth('/api/instructor/delete-quiz.php', {
+              method: 'POST',
+              body: JSON.stringify({
+                quiz_id: quizId,
+                instructor_id: user?.id
+              })
+            })
+        );
+        await Promise.all(deletePromises);
+        setQuizzes(quizzes.filter(q => !selectedQuizzes.includes(q.id)));
         showToast(`${selectedQuizzes.length} quiz(zes) deleted successfully`, "success");
         setSelectedQuizzes([]);
       } catch (error) {
+        console.error('Bulk delete error:', error);
         showToast("Failed to delete quizzes. Please try again.", "error");
       }
     }
   };
 
-  const handleBulkPublish = () => {
+  const handleBulkPublish = async () => {
     try {
-      const updatedQuizzes = quizzes.map(q => {
+      const publishPromises = selectedQuizzes.map(quizId =>
+        fetchWithAuth('/api/instructor/edit-quiz.php', {
+          method: 'POST',
+          body: JSON.stringify({ 
+            quiz_id: quizId,
+            instructor_id: user?.id,
+            published: true 
+          })
+        })
+      );
+      await Promise.all(publishPromises);
+      setQuizzes(quizzes.map(q => {
         if (selectedQuizzes.includes(q.id)) {
           return { ...q, published: true };
         }
         return q;
-      });
-      localStorage.setItem("instructorQuizzes", JSON.stringify(updatedQuizzes));
-      setQuizzes(updatedQuizzes);
+      }));
       showToast(`${selectedQuizzes.length} quiz(zes) published successfully`, "success");
+      try { setMeta('quizzesUpdatedAt', Date.now().toString()).catch(()=>{}); } catch (e) { }
       setSelectedQuizzes([]);
     } catch (error) {
+      console.error('Bulk publish error:', error);
       showToast("Failed to publish quizzes. Please try again.", "error");
     }
   };
 
-  const handleBulkUnpublish = () => {
+  const handleBulkUnpublish = async () => {
     try {
-      const updatedQuizzes = quizzes.map(q => {
+      const unpublishPromises = selectedQuizzes.map(quizId =>
+        fetchWithAuth('/api/instructor/edit-quiz.php', {
+          method: 'POST',
+          body: JSON.stringify({ 
+            quiz_id: quizId,
+            instructor_id: user?.id,
+            published: false 
+          })
+        })
+      );
+      await Promise.all(unpublishPromises);
+      setQuizzes(quizzes.map(q => {
         if (selectedQuizzes.includes(q.id)) {
           return { ...q, published: false };
         }
         return q;
-      });
-      localStorage.setItem("instructorQuizzes", JSON.stringify(updatedQuizzes));
-      setQuizzes(updatedQuizzes);
+      }));
       showToast(`${selectedQuizzes.length} quiz(zes) unpublished successfully`, "success");
+      try { setMeta('quizzesUpdatedAt', Date.now().toString()).catch(()=>{}); } catch (e) { }
       setSelectedQuizzes([]);
     } catch (error) {
+      console.error('Bulk unpublish error:', error);
       showToast("Failed to unpublish quizzes. Please try again.", "error");
     }
   };
 
   const filteredQuizzes = quizzes.filter(quiz => {
-    const matchesSearch = quiz.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          (quiz.description && quiz.description.toLowerCase().includes(searchTerm.toLowerCase()));
+    const title = (quiz && quiz.title) ? String(quiz.title) : '';
+    const desc = (quiz && quiz.description) ? String(quiz.description) : '';
+    const matchesSearch = title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          desc.toLowerCase().includes(searchTerm.toLowerCase());
     
     let matchesFilter = true;
     if (filterStatus === "published") {
@@ -244,9 +398,10 @@ export default function ManageInstructorQuizzesPage() {
   });
 
   const getQuizStats = (quiz) => {
+    const qs = Array.isArray(quiz?.questions) ? quiz.questions : [];
     return {
-      totalQuestions: quiz.questions.length,
-      totalPoints: quiz.questions.reduce((sum, q) => sum + q.points, 0)
+      totalQuestions: qs.length,
+      totalPoints: qs.reduce((sum, q) => sum + (q?.points || 0), 0)
     };
   };
 
@@ -840,7 +995,10 @@ export default function ManageInstructorQuizzesPage() {
                 </p>
               </div>
               <button
-                onClick={() => navigate("/instructor/create-quiz")}
+                onClick={() => {
+                  setEditingQuiz(null);
+                  setShowCreateModal(true);
+                }}
                 style={{
                   padding: '14px 28px',
                   borderRadius: '12px',
@@ -1117,7 +1275,10 @@ export default function ManageInstructorQuizzesPage() {
                 </p>
                 {!searchTerm && filterStatus === "all" && (
                   <button
-                    onClick={() => navigate("/instructor/create-quiz")}
+                    onClick={() => {
+                      setEditingQuiz(null);
+                      setShowCreateModal(true);
+                    }}
                     style={{
                       padding: '12px 24px',
                       borderRadius: '10px',
@@ -1271,7 +1432,8 @@ export default function ManageInstructorQuizzesPage() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigate("/instructor/create-quiz");
+                            setEditingQuiz(quiz);
+                            setShowCreateModal(true);
                           }}
                           style={{
                             flex: 1,
@@ -1436,6 +1598,36 @@ export default function ManageInstructorQuizzesPage() {
           </div>
         </main>
       </div>
+
+      {/* Create/Edit Quiz Modal */}
+      <CreateQuizModal
+        isOpen={showCreateModal}
+        onClose={() => {
+          setShowCreateModal(false);
+          setEditingQuiz(null);
+        }}
+        onSave={(savedQuiz) => {
+            // Normalize saved quiz to ensure stable id and questions array
+            const fallbackId = `temp-new-${Date.now()}`;
+            const normalizedSaved = {
+              ...savedQuiz,
+              id: savedQuiz?.id ?? savedQuiz?._id ?? savedQuiz?.quiz_id ?? fallbackId,
+              questions: Array.isArray(savedQuiz?.questions) ? savedQuiz.questions : (Array.isArray(savedQuiz?.items) ? savedQuiz.items : [])
+            };
+
+            if (editingQuiz) {
+              // Update existing quiz
+              setQuizzes(quizzes.map(q => q.id === normalizedSaved.id ? normalizedSaved : q));
+            } else {
+              // Add new quiz
+              setQuizzes([...quizzes, normalizedSaved]);
+            }
+            setShowCreateModal(false);
+            setEditingQuiz(null);
+            try { localStorage.setItem('quizzesUpdatedAt', Date.now().toString()); } catch (e) {}
+          }}
+        quiz={editingQuiz}
+      />
 
       <style>{`
         @keyframes scaleIn {

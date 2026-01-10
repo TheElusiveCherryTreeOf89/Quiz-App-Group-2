@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToastContext } from "../../App";
+import { fetchWithAuth, getAuthToken, getAuthTokenAsync } from "../../utils/api";
+import { setMeta, removeCurrentUser, removeToken, getCurrentUser, getMeta } from "../../utils/db";
 import logo from "../../assets/1.svg";
+import SubmissionDetailsModal from "./SubmissionDetailsModal";
 
 export default function InstructorDashboard() {
   const navigate = useNavigate();
@@ -18,6 +21,8 @@ export default function InstructorDashboard() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [pageLoaded, setPageLoaded] = useState(false);
+  const [showSubmissionModal, setShowSubmissionModal] = useState(false);
+  const [selectedSubmission, setSelectedSubmission] = useState(null);
 
   useEffect(() => {
     const handleResize = () => {
@@ -30,68 +35,166 @@ export default function InstructorDashboard() {
   }, []);
 
   useEffect(() => {
-    try {
-      const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
-      if (!currentUser || currentUser.role !== "instructor") {
+    const loadDashboardData = async () => {
+      try {
+        const currentUser = await getCurrentUser().catch(()=>null);
+        console.log('[InstructorDashboard] currentUser from IDB', JSON.stringify(currentUser));
+        if (!currentUser || currentUser.role !== "instructor") {
+          navigate("/instructor/login");
+          return;
+        }
+        setUser(currentUser);
+        // Check token before calling API (fast localStorage path, fallback to IndexedDB)
+        const token = getAuthToken() || await getAuthTokenAsync();
+        console.log('[InstructorDashboard] token check', token);
+        if (!token) {
+          console.warn('[InstructorDashboard] No auth token found, redirecting to login');
+          navigate('/instructor/login');
+          return;
+        }
+
+        // Load results from API (using submissions endpoint)
+        const resultsResponse = await fetchWithAuth('/api/instructor/submissions.php');
+
+        if (resultsResponse.ok) {
+          const resultsData = resultsResponse.data ?? (await resultsResponse.json());
+          const rawSubs = resultsData && (resultsData.submissions || resultsData.data || resultsData.submissions || []);
+          
+          // Transform submission data to match dashboard expectations
+          const subs = (rawSubs || []).map(sub => ({
+            studentName: sub.studentName || sub.student_name || 'Unknown',
+            studentEmail: sub.studentEmail || sub.student_email || '',
+            score: sub.score || 0,
+            totalQuestions: sub.totalQuestions || sub.total_questions || 0,
+            violations: sub.violations || 0,
+            submittedAt: sub.submittedAt || sub.submitted_at || new Date().toISOString(),
+            resultsReleased: sub.resultsReleased || false,
+            quiz_id: sub.quiz_id || sub.quizId || '',
+            answers: sub.answers || {},
+            questions: sub.questions || []
+          }));
+          
+          setResults(subs);
+          
+          // Check global results released status
+          const globalReleased = await getMeta('resultsReleased').catch(() => null);
+          const hasReleasedResults = globalReleased === 'true' || globalReleased === true || subs.some(sub => sub.resultsReleased);
+          setResultsReleased(hasReleasedResults);
+        } else {
+          setResults([]);
+          setResultsReleased(false);
+        }
+
+        // Load notifications
+        const rawNotifs = await getMeta('instructorNotifications').catch(()=>null);
+        setNotifications(rawNotifs ? JSON.parse(rawNotifs) : []);
+
+        // Load dark mode preference
+        const rawDark = await getMeta('darkMode').catch(()=>null);
+        setDarkMode(rawDark === 'true');
+
+        setTimeout(() => setPageLoaded(true), 50);
+      } catch (error) {
+        console.error('Load dashboard error:', error);
         navigate("/instructor/login");
-        return;
       }
-      setUser(currentUser);
-      loadResults();
-      
-      const released = localStorage.getItem("resultsReleased") === "true";
-      setResultsReleased(released);
-      
-      // Load notifications
-      const savedNotifications = JSON.parse(localStorage.getItem("instructorNotifications") || "[]");
-      setNotifications(savedNotifications);
-      
-      // Load dark mode preference
-      const savedDarkMode = localStorage.getItem("darkMode") === "true";
-      setDarkMode(savedDarkMode);
-      
-      setTimeout(() => setPageLoaded(true), 50);
-    } catch (error) {
-      navigate("/instructor/login");
-    }
+    };
+
+    loadDashboardData();
   }, [navigate]);
 
-  const loadResults = () => {
+  const loadResults = async () => {
     try {
-      const quizResults = JSON.parse(localStorage.getItem("quizResults") || "[]");
-      setResults(quizResults);
+      const token = getAuthToken() || await getAuthTokenAsync();
+      if (!token) {
+        console.warn('[InstructorDashboard] No auth token found for loadResults');
+        setResults([]);
+        setResultsReleased(false);
+        return;
+      }
+
+      const response = await fetchWithAuth('/api/instructor/submissions.php');
+
+      if (response.ok) {
+        const resultsData = response.data ?? (await response.json());
+        const rawSubs = resultsData && (resultsData.submissions || resultsData.data || []);
+        
+        // Transform submission data to match dashboard expectations
+        const subs = (rawSubs || []).map(sub => ({
+          studentName: sub.studentName || sub.student_name || 'Unknown',
+          studentEmail: sub.studentEmail || sub.student_email || '',
+          score: sub.score || 0,
+          totalQuestions: sub.totalQuestions || sub.total_questions || 0,
+          violations: sub.violations || 0,
+          submittedAt: sub.submittedAt || sub.submitted_at || new Date().toISOString(),
+          resultsReleased: sub.resultsReleased || false,
+          quiz_id: sub.quiz_id || sub.quizId || '',
+          answers: sub.answers || {},
+          questions: (sub.questions || []).map((q, idx) => ({
+            ...q,
+            id: q.id || `q_${idx + 1}`
+          }))
+        }));
+        
+        setResults(subs);
+        
+        // Check global results released status
+        const globalReleased = await getMeta('resultsReleased').catch(() => null);
+        const hasReleasedResults = globalReleased === 'true' || globalReleased === true || subs.some(sub => sub.resultsReleased);
+        setResultsReleased(hasReleasedResults);
+      } else {
+        setResults([]);
+        setResultsReleased(false);
+      }
     } catch (error) {
+      console.error('Load results error:', error);
       setResults([]);
+      setResultsReleased(false);
     }
   };
 
   const toggleDarkMode = () => {
     const newMode = !darkMode;
     setDarkMode(newMode);
-    localStorage.setItem("darkMode", newMode.toString());
+    setMeta('darkMode', newMode.toString()).catch(() => {});
     showToast(`Dark mode ${newMode ? 'enabled' : 'disabled'}`, "info");
   };
 
   const markNotificationAsRead = (id) => {
     const updated = notifications.map(n => n.id === id ? { ...n, read: true } : n);
     setNotifications(updated);
-    localStorage.setItem("instructorNotifications", JSON.stringify(updated));
+    setMeta('instructorNotifications', JSON.stringify(updated)).catch(() => {});
   };
 
   const clearAllNotifications = () => {
     setNotifications([]);
-    localStorage.setItem("instructorNotifications", "[]");
+    setMeta('instructorNotifications', JSON.stringify([])).catch(() => {});
     showToast("All notifications cleared", "success");
     setShowNotifications(false);
   };
 
-  const handleReleaseResults = () => {
+  const handleReleaseResults = async () => {
     if (window.confirm("Are you sure you want to release the results to all students?")) {
       try {
-        localStorage.setItem("resultsReleased", "true");
-        setResultsReleased(true);
-        showToast("Results have been released! Students can now view their scores.", "success");
+        // Attempt to call backend release endpoint; fallback to local marking
+        const payload = { instructor_id: user?.id ?? null, quiz_id: 'all' };
+        console.debug('[InstructorDashboard] release-results payload:', payload);
+        const response = await fetchWithAuth('/api/instructor/release-results.php', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+          setResultsReleased(true);
+          setResults(prev => (prev || []).map(r => ({ ...r, resultsReleased: true })));
+          showToast("Results have been released! Students can now view their scores.", "success");
+        } else {
+          const err = response.data ?? (await response.json().catch(() => null));
+          throw new Error(err?.message || 'Failed to release results');
+        }
+
       } catch (error) {
+        console.error('Release results error:', error);
         showToast("Failed to release results. Please try again.", "error");
       }
     }
@@ -158,7 +261,9 @@ export default function InstructorDashboard() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("currentUser");
+    // Remove session from IndexedDB
+    try { removeCurrentUser(); } catch (e) {}
+    try { removeToken(); } catch (e) {}
     navigate("/instructor/login");
   };
 
@@ -1104,7 +1209,10 @@ export default function InstructorDashboard() {
                       return (
                         <tr 
                           key={idx} 
-                          onClick={() => navigate('/instructor/submission/' + idx, { state: { submission: result } })}
+                          onClick={() => {
+                            setSelectedSubmission(result);
+                            setShowSubmissionModal(true);
+                          }}
                           style={{ 
                             borderBottom: `1px solid ${theme.border}`,
                             cursor: 'pointer',
@@ -1156,7 +1264,7 @@ export default function InstructorDashboard() {
                             </span>
                           </td>
                           <td style={{ padding: '16px', fontSize: '14px', color: '#666' }}>
-                            {result.submittedAt}
+                            {new Date(result.submittedAt).toLocaleString()}
                           </td>
                         </tr>
                       );
@@ -1192,6 +1300,18 @@ export default function InstructorDashboard() {
           )}
         </main>
       </div>
+
+      {/* Submission Details Modal */}
+      {showSubmissionModal && selectedSubmission && (
+        <SubmissionDetailsModal
+          submission={selectedSubmission}
+          onClose={() => {
+            setShowSubmissionModal(false);
+            setSelectedSubmission(null);
+          }}
+          darkMode={darkMode}
+        />
+      )}
       
       <style>{`
         @keyframes scaleIn {

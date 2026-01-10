@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToastContext } from "../App";
+import { fetchWithAuth } from "../utils/api";
+import { setMeta, removeCurrentUser, removeToken, getCurrentUser, getMeta, getAllQuizzes } from "../utils/db";
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
@@ -13,18 +15,10 @@ export default function StudentDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [darkMode, setDarkMode] = useState(false);
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [pageLoaded, setPageLoaded] = useState(false);
 
-  const notifications = [
-    { id: 1, text: "A quiz has been posted!", time: "Now" },
-    { id: 2, text: "A quiz has been posted!", time: "30 secs ago" },
-    { id: 3, text: "A quiz has been posted!", time: "1 min ago" },
-    { id: 4, text: 'Admin has posted an announcement: "Happy Holidays".', time: "4 hours ago" },
-    { id: 5, text: "Admin has sent you a message.", time: "7 days ago" },
-    { id: 6, text: 'Result Released: "Quiz 2: Requirements Engineering"', time: "1d ago" },
-    { id: 7, text: 'Result Released: "Quiz 1: Intro To Web App"', time: "8d ago" }
-  ];
+  // Notifications will be fetched from backend
+  const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -37,41 +31,53 @@ export default function StudentDashboard() {
   }, []);
 
   useEffect(() => {
-    try {
-      const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
-      if (!currentUser || currentUser.role !== "student") {
-        navigate("/login");
-        return;
-      }
-      setUser(currentUser);
+    (async () => {
+      try {
+        const currentUser = await getCurrentUser();
+        if (!currentUser || currentUser.role !== "student") {
+          navigate("/login");
+          return;
+        }
+        setUser(currentUser);
 
-      const completedQuizzes = JSON.parse(localStorage.getItem("completedQuizzes") || "{}");
-      if (completedQuizzes[currentUser.email]) {
-        setQuizStatus("completed");
-      } else {
-        setQuizStatus("available");
+        try {
+          const resp = await fetchWithAuth('/api/quizzes/submitted');
+          const data = resp.data ?? (await resp.json().catch(() => null));
+          const submissions = Array.isArray(data) ? data : (data?.submissions || data?.data || []);
+          const hasSubmitted = submissions.some(s => s.studentEmail === currentUser.email || s.email === currentUser.email);
+          setQuizStatus(hasSubmitted ? 'completed' : 'available');
+        } catch (err) {
+          console.warn('[StudentDashboard] submission check failed, falling back to IndexedDB', err);
+          const completedRaw = await getMeta('completedQuizzes').catch(()=>null);
+          const completedQuizzes = completedRaw ? JSON.parse(completedRaw) : {};
+          setQuizStatus(completedQuizzes[currentUser.email] ? 'completed' : 'available');
+        }
+
+        // Load dark mode preference
+        const rawDark = await getMeta('darkMode').catch(()=>null);
+        const savedDarkMode = rawDark === 'true' || rawDark === true;
+        setDarkMode(savedDarkMode);
+
+        // Trigger page load animation
+        setTimeout(() => setPageLoaded(true), 50);
+      } catch (error) {
+        navigate("/login");
       }
-      
-      // Load dark mode preference
-      const savedDarkMode = localStorage.getItem("darkMode") === "true";
-      setDarkMode(savedDarkMode);
-      
-      // Trigger page load animation
-      setTimeout(() => setPageLoaded(true), 50);
-    } catch (error) {
-      navigate("/login");
-    }
+    })();
   }, [navigate]);
 
   const handleLogout = () => {
-    localStorage.removeItem("currentUser");
+    // Remove session from IndexedDB
+    try { removeCurrentUser(); } catch (e) {}
+    try { removeToken(); } catch (e) {}
     navigate("/login");
   };
   
   const toggleDarkMode = () => {
     const newMode = !darkMode;
     setDarkMode(newMode);
-    localStorage.setItem("darkMode", newMode.toString());
+    // persist to IndexedDB meta
+    setMeta('darkMode', newMode).catch(() => {});
     showToast(`Dark mode ${newMode ? 'enabled' : 'disabled'}`, "info");
   };
 
@@ -83,21 +89,71 @@ export default function StudentDashboard() {
     navigate("/student/quiz");
   };
 
-  // Sample quizzes data - replace with actual data from localStorage
-  const allQuizzes = [
-    { id: 1, title: "Quiz 3: Interface Design & Us...", due: "Dec 28, 11:59PM", timeLimit: "1 hour", status: "available" },
-    { id: 2, title: "Quiz 4: React Fundamentals", due: "Dec 28, 11:59PM", timeLimit: "1 hour", status: "available" },
-    { id: 3, title: "Quiz 5: React Advanced Con...", due: "Dec 28, 11:59PM", timeLimit: "1 hour", status: "available" },
-    { id: 4, title: "Quiz 2: Requirements Engineering", due: "Dec 20, 11:59PM", timeLimit: "45 mins", status: "completed" },
-    { id: 5, title: "Quiz 1: Intro To Web App", due: "Dec 15, 11:59PM", timeLimit: "30 mins", status: "completed" }
-  ];
+  // Quizzes will be fetched from backend
+  const [allQuizzes, setAllQuizzes] = useState([]);
 
   // Filter quizzes based on search and status
   const filteredQuizzes = allQuizzes.filter(quiz => {
-    const matchesSearch = quiz.title.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = quiz.title?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterStatus === "all" || quiz.status === filterStatus;
     return matchesSearch && matchesFilter;
   });
+    // Fetch quizzes and notifications from backend on mount
+    useEffect(() => {
+      const fetchAvailable = async () => {
+        try {
+          const resp = await fetchWithAuth('/api/quizzes/available.php');
+          const data = resp.data ?? (await resp.json().catch(() => null));
+          setAllQuizzes(Array.isArray(data) ? data : (data?.quizzes || data?.data || []));
+        } catch (err) {
+          console.error('[StudentDashboard] load quizzes error', err);
+            // fallback to local IndexedDB copy when API fails
+            try {
+              const local = await getAllQuizzes();
+              setAllQuizzes(Array.isArray(local) ? local : []);
+            } catch (dbErr) {
+              console.error('[StudentDashboard] failed to load local quizzes', dbErr);
+              setAllQuizzes([]);
+            }
+        }
+      };
+
+      fetchAvailable();
+
+      const handleStorage = (e) => {
+        if (!e) return;
+        if (e.key === 'quizzesUpdatedAt') {
+          fetchAvailable();
+          // Optionally reload notifications
+          (async () => {
+            try {
+              const resp = await fetchWithAuth('/api/notifications');
+              const data = resp.data ?? (await resp.json().catch(() => null));
+              setNotifications(Array.isArray(data) ? data : (data?.notifications || data?.data || []));
+            } catch (err) {
+              console.warn('[StudentDashboard] failed to reload notifications after update', err);
+            }
+          })();
+        }
+      };
+
+      window.addEventListener('storage', handleStorage);
+      // cleanup
+      return () => {
+        window.removeEventListener('storage', handleStorage);
+      };
+
+      (async () => {
+        try {
+          const resp = await fetchWithAuth('/api/notifications');
+          const data = resp.data ?? (await resp.json().catch(() => null));
+          setNotifications(Array.isArray(data) ? data : (data?.notifications || data?.data || []));
+        } catch (err) {
+          console.error('[StudentDashboard] load notifications error', err);
+          setNotifications([]);
+        }
+      })();
+    }, []);
   
   // Theme based on dark mode
   const theme = darkMode ? {
@@ -453,146 +509,6 @@ export default function StudentDashboard() {
             >
               {darkMode ? '☀️' : '🌙'}
             </button>
-            
-            {/* Profile Icon with Dropdown */}
-            <div style={{ position: 'relative' }}>
-              <button 
-                onClick={() => setShowProfileMenu(!showProfileMenu)}
-                style={{
-                  width: isMobile ? '36px' : '40px',
-                  height: isMobile ? '36px' : '40px',
-                  borderRadius: '50%',
-                  backgroundColor: 'black',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'white',
-                  fontSize: isMobile ? '16px' : '20px',
-                  transition: 'transform 0.2s'
-                }}
-                onMouseEnter={(e) => e.target.style.transform = 'scale(1.1)'}
-                onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
-              >👤</button>
-              
-              {/* Profile Dropdown */}
-              {showProfileMenu && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  right: 0,
-                  marginTop: '8px',
-                  backgroundColor: theme.card,
-                  borderRadius: '12px',
-                  boxShadow: darkMode ? '0 8px 24px rgba(0,0,0,0.5)' : '0 8px 24px rgba(0,0,0,0.15)',
-                  width: '220px',
-                  zIndex: 1000,
-                  animation: 'scaleIn 0.2s ease-out',
-                  overflow: 'hidden',
-                  transition: 'background-color 0.3s ease'
-                }}>
-                  <div style={{
-                    padding: '16px',
-                    borderBottom: `1px solid ${theme.border}`,
-                    backgroundColor: darkMode ? '#3d3d3d' : '#f9f9f9'
-                  }}>
-                    <div style={{ fontSize: '16px', fontWeight: '700', color: theme.text, marginBottom: '4px', fontFamily: 'var(--font-heading)', transition: 'color 0.3s ease' }}>
-                      {user?.name || 'Student'}
-                    </div>
-                    <div style={{ fontSize: '13px', color: theme.textSecondary, fontFamily: 'var(--font-body)', transition: 'color 0.3s ease' }}>
-                      {user?.email}
-                    </div>
-                  </div>
-                  
-                  <button
-                    onClick={() => {
-                      setShowProfileMenu(false);
-                      navigate("/student/profile");
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      border: 'none',
-                      background: 'none',
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      color: theme.text,
-                      transition: 'background-color 0.2s',
-                      fontFamily: 'var(--font-body)'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                  >
-                    <span>👤</span>
-                    <span>View Profile</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setShowProfileMenu(false);
-                      navigate("/student/manage-quizzes");
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      border: 'none',
-                      background: 'none',
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      color: theme.text,
-                      transition: 'background-color 0.2s',
-                      fontFamily: 'var(--font-body)'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                  >
-                    <span>📝</span>
-                    <span>My Quizzes</span>
-                  </button>
-
-                  <div style={{ borderTop: `1px solid ${theme.border}` }}>
-                    <button
-                      onClick={() => {
-                        setShowProfileMenu(false);
-                        handleLogout();
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '12px 16px',
-                        border: 'none',
-                        background: 'none',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        color: '#DC2626',
-                        transition: 'background-color 0.2s',
-                        fontFamily: 'var(--font-body)'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                    >
-                      <span>🚪</span>
-                      <span>Log Out</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
         </header>
 

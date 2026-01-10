@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { fetchWithAuth } from "../utils/api";
+import { setMeta, removeCurrentUser, getCurrentUser, getMeta } from "../utils/db";
 
 const NotificationsPage = () => {
   const [activeMenu, setActiveMenu] = useState("notifications");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pageLoaded, setPageLoaded] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [darkMode, setDarkMode] = useState(() => {
-    const saved = localStorage.getItem("darkMode");
-    return saved ? JSON.parse(saved) : false;
-  });
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
   const navigate = useNavigate();
 
   // Handle window resize for mobile responsiveness
@@ -26,20 +24,29 @@ const NotificationsPage = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Load dark mode preference
+  // Load dark mode preference and current user
   useEffect(() => {
-    const saved = localStorage.getItem("darkMode");
-    if (saved) {
-      setDarkMode(JSON.parse(saved));
-    }
-    setTimeout(() => setPageLoaded(true), 50);
+    (async () => {
+      try {
+        const rawDark = await getMeta('darkMode').catch(()=>null);
+        if (rawDark) setDarkMode(JSON.parse(rawDark));
+        const u = await getCurrentUser().catch(()=>null);
+        if (u) {
+          // set nothing here; components can read notifications from API
+        }
+      } catch(e) {
+        // ignore
+      } finally {
+        setTimeout(() => setPageLoaded(true), 50);
+      }
+    })();
   }, []);
 
   // Toggle dark mode
   const toggleDarkMode = () => {
     setDarkMode(prev => {
       const newValue = !prev;
-      localStorage.setItem("darkMode", JSON.stringify(newValue));
+      setMeta('darkMode', JSON.stringify(newValue)).catch(() => {});
       return newValue;
     });
   };
@@ -55,74 +62,37 @@ const NotificationsPage = () => {
     sidebarText: darkMode ? '#ffffff' : '#1a1a1a'
   };
 
-  const currentUser = JSON.parse(localStorage.getItem("currentUser")) || { name: "Student", email: "student@example.com" };
+  const [currentUser, setCurrentUser] = useState({ name: "Student", email: "student@example.com" });
 
-  // Sample notifications with read/unread status
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      type: "quiz",
-      icon: "📝",
-      title: "New Quiz Available",
-      message: "DCIT 26 Final Exam is now available to attempt.",
-      time: "5 minutes ago",
-      isRead: false,
-      color: "#FF6B00"
-    },
-    {
-      id: 2,
-      type: "result",
-      icon: "🎯",
-      title: "Quiz Result Released",
-      message: "Your result for Midterm Exam has been released.",
-      time: "2 hours ago",
-      isRead: false,
-      color: "#22C55E"
-    },
-    {
-      id: 3,
-      type: "deadline",
-      icon: "⏰",
-      title: "Deadline Reminder",
-      message: "Quiz 3 - Arrays and Strings deadline is in 24 hours.",
-      time: "5 hours ago",
-      isRead: true,
-      color: "#F59E0B"
-    },
-    {
-      id: 4,
-      type: "announcement",
-      icon: "📢",
-      title: "Course Announcement",
-      message: "Class will be held online next week due to maintenance.",
-      time: "1 day ago",
-      isRead: true,
-      color: "#3B82F6"
-    },
-    {
-      id: 5,
-      type: "result",
-      icon: "🏆",
-      title: "Excellent Performance!",
-      message: "You scored 95% in Quiz 2 - Functions. Keep it up!",
-      time: "2 days ago",
-      isRead: true,
-      color: "#22C55E"
-    },
-    {
-      id: 6,
-      type: "quiz",
-      icon: "📝",
-      title: "Quiz Updated",
-      message: "Quiz 4 - Pointers has been updated with additional questions.",
-      time: "3 days ago",
-      isRead: true,
-      color: "#FF6B00"
-    },
-  ]);
+  useEffect(()=>{
+    let mounted = true;
+    (async ()=>{
+      try{
+        const u = await getCurrentUser();
+        if (mounted && u) setCurrentUser(u);
+      }catch(e){/* ignore */}
+    })();
+    return ()=>{ mounted = false };
+  },[]);
+
+  // Notifications will be fetched from backend
+  const [notifications, setNotifications] = useState([]);
+  // Fetch notifications from backend on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await fetchWithAuth('/api/notifications');
+        const data = resp.data ?? (await resp.json().catch(() => null));
+        setNotifications(Array.isArray(data) ? data : (data?.notifications || data?.data || []));
+      } catch (err) {
+        console.error('[NotificationsPage] load notifications error', err);
+        setNotifications([]);
+      }
+    })();
+  }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem("currentUser");
+    removeCurrentUser().catch(() => {});
     navigate("/login");
   };
 
@@ -461,146 +431,6 @@ const NotificationsPage = () => {
             >
               {darkMode ? '☀️' : '🌙'}
             </button>
-            
-            {/* Profile Icon with Dropdown */}
-            <div style={{ position: 'relative' }}>
-              <button 
-                onClick={() => setShowProfileMenu(!showProfileMenu)}
-                style={{
-                  width: isMobile ? '36px' : '40px',
-                  height: isMobile ? '36px' : '40px',
-                  borderRadius: '50%',
-                  backgroundColor: theme.text,
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: theme.background,
-                  fontSize: isMobile ? '16px' : '20px',
-                  transition: 'transform 0.2s'
-                }}
-                onMouseEnter={(e) => e.target.style.transform = 'scale(1.1)'}
-                onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
-              >👤</button>
-              
-              {/* Profile Dropdown */}
-              {showProfileMenu && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  right: 0,
-                  marginTop: '8px',
-                  backgroundColor: theme.card,
-                  borderRadius: '12px',
-                  boxShadow: darkMode ? '0 8px 24px rgba(0,0,0,0.5)' : '0 8px 24px rgba(0,0,0,0.15)',
-                  width: '220px',
-                  zIndex: 1000,
-                  animation: 'scaleIn 0.2s ease-out',
-                  overflow: 'hidden',
-                  transition: 'background-color 0.3s ease'
-                }}>
-                  <div style={{
-                    padding: '16px',
-                    borderBottom: `1px solid ${theme.border}`,
-                    backgroundColor: darkMode ? '#3d3d3d' : '#f9f9f9'
-                  }}>
-                    <div style={{ fontSize: '16px', fontWeight: '700', color: theme.text, marginBottom: '4px', fontFamily: 'var(--font-heading)', transition: 'color 0.3s ease' }}>
-                      {currentUser?.name || 'Student'}
-                    </div>
-                    <div style={{ fontSize: '13px', color: theme.textSecondary, fontFamily: 'var(--font-body)', transition: 'color 0.3s ease' }}>
-                      {currentUser?.email}
-                    </div>
-                  </div>
-                  
-                  <button
-                    onClick={() => {
-                      setShowProfileMenu(false);
-                      navigate("/student/profile");
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      border: 'none',
-                      background: 'none',
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      color: theme.text,
-                      transition: 'background-color 0.2s',
-                      fontFamily: 'var(--font-body)'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                  >
-                    <span>👤</span>
-                    <span>My Profile</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setShowProfileMenu(false);
-                      navigate("/student/dashboard");
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      border: 'none',
-                      background: 'none',
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      color: theme.text,
-                      transition: 'background-color 0.2s',
-                      fontFamily: 'var(--font-body)'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                  >
-                    <span>📊</span>
-                    <span>Dashboard</span>
-                  </button>
-
-                  <div style={{ borderTop: `1px solid ${theme.border}` }}>
-                    <button
-                      onClick={() => {
-                        setShowProfileMenu(false);
-                        handleLogout();
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '12px 16px',
-                        border: 'none',
-                        background: 'none',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        color: '#DC2626',
-                        transition: 'background-color 0.2s',
-                        fontFamily: 'var(--font-body)'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = darkMode ? '#3d3d3d' : '#f5f5f5'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                    >
-                      <span>🚪</span>
-                      <span>Log Out</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
         </header>
 

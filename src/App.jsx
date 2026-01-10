@@ -12,9 +12,8 @@ import QuizPage from "./components/Student/QuizPage";
 import ResultPendingPage from "./pages/ResultPendingPage";
 import MyResultPage from "./pages/MyResultPage";
 import InstructorDashboard from "./components/Instructor/InstructorDashboard";
-import CreateQuizPage from "./pages/CreateQuizPage";
 import ManageInstructorQuizzesPage from "./pages/ManageInstructorQuizzesPage";
-import SubmissionDetailsPage from "./pages/SubmissionDetailsPage";
+import RequireInstructorAuth from "./components/RequireInstructorAuth";
 import InstructorProfilePage from "./pages/InstructorProfilePage";
 import InstructorStudentsPage from "./pages/InstructorStudentsPage";
 import InstructorAnalyticsPage from "./pages/InstructorAnalyticsPage";
@@ -48,13 +47,11 @@ function App() {
           <Route path="/student/quiz" element={<QuizPage />} />
           <Route path="/student/result-pending" element={<ResultPendingPage />} />
           <Route path="/student/result" element={<MyResultPage />} />
-          <Route path="/instructor/dashboard" element={<InstructorDashboard />} />
-          <Route path="/instructor/quizzes" element={<ManageInstructorQuizzesPage />} />
-          <Route path="/instructor/create-quiz" element={<CreateQuizPage />} />
-          <Route path="/instructor/submission/:id" element={<SubmissionDetailsPage />} />
-          <Route path="/instructor/profile" element={<InstructorProfilePage />} />
-          <Route path="/instructor/students" element={<InstructorStudentsPage />} />
-          <Route path="/instructor/analytics" element={<InstructorAnalyticsPage />} />
+          <Route path="/instructor/dashboard" element={<RequireInstructorAuth><InstructorDashboard /></RequireInstructorAuth>} />
+          <Route path="/instructor/quizzes" element={<RequireInstructorAuth><ManageInstructorQuizzesPage /></RequireInstructorAuth>} />
+          <Route path="/instructor/profile" element={<RequireInstructorAuth><InstructorProfilePage /></RequireInstructorAuth>} />
+          <Route path="/instructor/students" element={<RequireInstructorAuth><InstructorStudentsPage /></RequireInstructorAuth>} />
+          <Route path="/instructor/analytics" element={<RequireInstructorAuth><InstructorAnalyticsPage /></RequireInstructorAuth>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <ToastContainer toasts={toasts} removeToast={removeToast} />
