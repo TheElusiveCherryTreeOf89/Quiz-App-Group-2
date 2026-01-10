@@ -71,7 +71,26 @@ export default function InstructorDashboard() {
             resultsReleased: sub.resultsReleased || false,
             quiz_id: sub.quiz_id || sub.quizId || '',
             answers: sub.answers || {},
-            questions: sub.questions || []
+            questions: (sub.questions || []).map((q, idx) => {
+              const questionWithId = {
+                ...q,
+                id: q.id || `q_${idx + 1}`
+              };
+              
+              // Convert correctAnswer index to actual option text if it's a number
+              if (typeof questionWithId.correctAnswer === 'number' && questionWithId.options) {
+                questionWithId.correctAnswer = questionWithId.options[questionWithId.correctAnswer];
+              }
+              
+              // Convert correctAnswers indices to text for multiple correct questions
+              if (Array.isArray(questionWithId.correctAnswers) && questionWithId.options) {
+                questionWithId.correctAnswers = questionWithId.correctAnswers.map(index => 
+                  typeof index === 'number' ? questionWithId.options[index] : index
+                );
+              }
+              
+              return questionWithId;
+            })
           }));
           
           setResults(subs);
@@ -120,21 +139,58 @@ export default function InstructorDashboard() {
         const rawSubs = resultsData && (resultsData.submissions || resultsData.data || []);
         
         // Transform submission data to match dashboard expectations
-        const subs = (rawSubs || []).map(sub => ({
-          studentName: sub.studentName || sub.student_name || 'Unknown',
-          studentEmail: sub.studentEmail || sub.student_email || '',
-          score: sub.score || 0,
-          totalQuestions: sub.totalQuestions || sub.total_questions || 0,
-          violations: sub.violations || 0,
-          submittedAt: sub.submittedAt || sub.submitted_at || new Date().toISOString(),
-          resultsReleased: sub.resultsReleased || false,
-          quiz_id: sub.quiz_id || sub.quizId || '',
-          answers: sub.answers || {},
-          questions: (sub.questions || []).map((q, idx) => ({
-            ...q,
-            id: q.id || `q_${idx + 1}`
-          }))
-        }));
+        const subs = (rawSubs || []).map(sub => {
+          // Recalculate score based on answers and corrected questions
+          let recalculatedScore = 0;
+          const correctedQuestions = (sub.questions || []).map((q, idx) => {
+            const questionWithId = {
+              ...q,
+              id: q.id || `q_${idx + 1}`
+            };
+            
+            // Convert correctAnswer index to actual option text if it's a number
+            if (typeof questionWithId.correctAnswer === 'number' && questionWithId.options) {
+              questionWithId.correctAnswer = questionWithId.options[questionWithId.correctAnswer];
+            }
+            
+            // Convert correctAnswers indices to text for multiple correct questions
+            if (Array.isArray(questionWithId.correctAnswers) && questionWithId.options) {
+              questionWithId.correctAnswers = questionWithId.correctAnswers.map(index => 
+                typeof index === 'number' ? questionWithId.options[index] : index
+              );
+            }
+            
+            // Recalculate score for this question
+            const studentAnswer = sub.answers?.[questionWithId.id];
+            if (studentAnswer) {
+              const correctAnswer = questionWithId.correct || questionWithId.correctAnswer;
+              if (questionWithId.type === "multiple-correct") {
+                const correct = questionWithId.correctAnswers || [];
+                const student = Array.isArray(studentAnswer) ? studentAnswer : [studentAnswer];
+                if (JSON.stringify([...correct].sort()) === JSON.stringify([...student].sort())) {
+                  recalculatedScore += 1;
+                }
+              } else if (studentAnswer === correctAnswer) {
+                recalculatedScore += 1;
+              }
+            }
+            
+            return questionWithId;
+          });
+          
+          return {
+            studentName: sub.studentName || sub.student_name || 'Unknown',
+            studentEmail: sub.studentEmail || sub.student_email || '',
+            score: recalculatedScore, // Use recalculated score
+            totalQuestions: sub.totalQuestions || sub.total_questions || correctedQuestions.length,
+            violations: sub.violations || 0,
+            submittedAt: sub.submittedAt || sub.submitted_at || new Date().toISOString(),
+            resultsReleased: sub.resultsReleased || false,
+            quiz_id: sub.quiz_id || sub.quizId || '',
+            answers: sub.answers || {},
+            questions: correctedQuestions
+          };
+        });
         
         setResults(subs);
         

@@ -75,11 +75,27 @@ export default function QuizPage() {
             const quizzes = Array.isArray(data) ? data : (data?.quizzes || data?.data || []);
             const found = quizzes.find(q => q.id === quizId || q._id === quizId || q.quiz_id === quizId || String(q.id) === String(quizId));
             if (found && Array.isArray(found.questions)) {
-              // Ensure questions have ids
-              const questionsWithIds = (found.questions || []).map((q, idx) => ({
-                ...q,
-                id: q.id || `q_${idx + 1}`
-              }));
+              // Ensure questions have ids and convert correctAnswer indices to text
+              const questionsWithIds = (found.questions || []).map((q, idx) => {
+                const questionWithId = {
+                  ...q,
+                  id: q.id || `q_${idx + 1}`
+                };
+                
+                // Convert correctAnswer index to actual option text if it's a number
+                if (typeof questionWithId.correctAnswer === 'number' && questionWithId.options) {
+                  questionWithId.correctAnswer = questionWithId.options[questionWithId.correctAnswer];
+                }
+                
+                // Convert correctAnswers indices to text for multiple correct questions
+                if (Array.isArray(questionWithId.correctAnswers) && questionWithId.options) {
+                  questionWithId.correctAnswers = questionWithId.correctAnswers.map(index => 
+                    typeof index === 'number' ? questionWithId.options[index] : index
+                  );
+                }
+                
+                return questionWithId;
+              });
               setQuestions(questionsWithIds);
               // store current quiz id so submissions include quiz reference
               try { useQuizStore.getState().setQuizId(found.id ?? found._id ?? found.quiz_id ?? found.id); } catch (e) { /* noop */ }
@@ -99,11 +115,27 @@ export default function QuizPage() {
             const quizzes = Array.isArray(data) ? data : (data?.quizzes || data?.data || []);
             if (quizzes.length > 0) {
               const quiz = quizzes[0];
-              // Ensure questions have ids
-              const questionsWithIds = (quiz.questions || []).map((q, idx) => ({
-                ...q,
-                id: q.id || `q_${idx + 1}`
-              }));
+              // Ensure questions have ids and convert correctAnswer indices to text
+              const questionsWithIds = (quiz.questions || []).map((q, idx) => {
+                const questionWithId = {
+                  ...q,
+                  id: q.id || `q_${idx + 1}`
+                };
+                
+                // Convert correctAnswer index to actual option text if it's a number
+                if (typeof questionWithId.correctAnswer === 'number' && questionWithId.options) {
+                  questionWithId.correctAnswer = questionWithId.options[questionWithId.correctAnswer];
+                }
+                
+                // Convert correctAnswers indices to text for multiple correct questions
+                if (Array.isArray(questionWithId.correctAnswers) && questionWithId.options) {
+                  questionWithId.correctAnswers = questionWithId.correctAnswers.map(index => 
+                    typeof index === 'number' ? questionWithId.options[index] : index
+                  );
+                }
+                
+                return questionWithId;
+              });
               setQuestions(questionsWithIds);
               // store current quiz id so submissions include quiz reference
               try { useQuizStore.getState().setQuizId(quiz.id ?? quiz._id ?? quiz.quiz_id ?? quiz.id); } catch (e) { /* noop */ }
